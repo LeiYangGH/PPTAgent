@@ -68,7 +68,7 @@ RUN uv venv --python 3.13 $VIRTUAL_ENV && \
 
 # Install Python Playwright browser binaries used by deeppresenter runtime.
 RUN /opt/.venv/bin/playwright install chromium
-RUN modelscope download forceless/fasttext-language-id
+RUN modelscope download --model forceless/fasttext-language-id
 
 RUN apt install -y poppler-utils
 RUN apt install -y docker.io
