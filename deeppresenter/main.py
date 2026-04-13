@@ -96,11 +96,8 @@ class AgentLoop:
                 try:
                     async for msg in self.planner_gen:
                         if isinstance(msg, str):
-                            outline_path = Path(msg)
-                            if not outline_path.is_absolute():
-                                outline_path = self.workspace / outline_path
-                            self.intermediate_output["outline"] = outline_path
-                            yield str(outline_path)
+                            self.intermediate_output["outline"] = msg
+                            yield msg
                             break
                         yield msg
                 except Exception as e:
