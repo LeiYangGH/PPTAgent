@@ -23,6 +23,7 @@ from pptagent.utils import get_logger, runs_merge
 
 logger = get_logger(__name__)
 TABLE_REGEX = re.compile(r".*table_[0-9a-fA-F]{4}\.png$")
+SAFE_EVAL_GLOBALS = {"__builtins__": {}}
 
 
 class SlideRenderer(HTMLRenderer):
@@ -182,7 +183,7 @@ class CodeExecutor:
                 partial_func = partial(self.registered_functions[func], edit_slide)
                 if func == "replace_image":
                     partial_func = partial(partial_func, doc)
-                eval(line, {}, {func: partial_func})
+                eval(line, SAFE_EVAL_GLOBALS, {func: partial_func})
                 self.code_history[-1][0] = HistoryMark.CODE_RUN_CORRECT
             except Exception as e:
                 if not isinstance(e, SlideEditError):

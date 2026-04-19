@@ -23,6 +23,7 @@ from pptagent.utils import (
     get_html_table_image,
     get_logger,
     package_join,
+    resolve_path_in_workspace,
 )
 
 logger = get_logger(__name__)
@@ -291,13 +292,13 @@ class PPTAgentServer(PPTAgent):
             Args:
                 pptx_path: The path to save the PowerPoint file
             """
-            pptx = Path(pptx_path)
+            pptx = resolve_path_in_workspace(pptx_path)
             assert len(self.slides), (
                 "No slides generated, please call `generate_slide` first"
             )
             pptx.parent.mkdir(parents=True, exist_ok=True)
             self.empty_prs.slides = self.slides
-            self.empty_prs.save(pptx_path)
+            self.empty_prs.save(str(pptx))
             self.slides = []
             self._initialized = False
             return f"total {len(self.empty_prs.slides)} slides saved to {pptx}"

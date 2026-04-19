@@ -98,6 +98,28 @@ else:
         "unoconvert/soffice is not installed, pptx to images conversion will not work"
     )
 
+
+def resolve_path_in_workspace(path_str: str, workspace: Path | None = None) -> Path:
+    """
+    Resolve a path and ensure it stays inside the active workspace.
+
+    Args:
+        path_str (str): User-provided file path.
+        workspace (Path | None): Allowed workspace root. Defaults to current working
+            directory.
+
+    Returns:
+        Path: Resolved path within the workspace.
+    """
+    workspace_root = (workspace or Path.cwd()).resolve()
+    target = Path(path_str).resolve()
+    if not target.is_relative_to(workspace_root):
+        raise ValueError(
+            f"Access denied: path outside allowed workspace: {workspace_root}"
+        )
+    return target
+
+
 # Set of supported image extensions
 IMAGE_EXTENSIONS: set[str] = {
     "bmp",
@@ -347,7 +369,8 @@ def get_html_table_image(html: str, output_path: str, css: str = None):
     """
     if css is None:
         css = TABLE_CSS
-    parent_dir, base_name = os.path.split(output_path)
+    output_file = resolve_path_in_workspace(output_path)
+    parent_dir, base_name = os.path.split(output_file)
 
     if parent_dir and not os.path.exists(parent_dir):
         os.makedirs(parent_dir)
@@ -364,7 +387,7 @@ def get_html_table_image(html: str, output_path: str, css: str = None):
         save_as=base_name,
         size=(1000, 600),
     )
-    manual_scan_crop(output_path)
+    manual_scan_crop(str(output_file))
 
 
 async def _is_unoserver_running(host: str, port: int) -> bool:
