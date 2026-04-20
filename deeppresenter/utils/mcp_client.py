@@ -51,18 +51,23 @@ class MCPClient:
 
         async def mcp_session_runner() -> None:
             exit_stack = AsyncExitStack()
-            if config.command:
-                await self.connect_to_server(
-                    server_id, config.command, config.args, config.env, exit_stack
-                )
-            elif config.url:
-                await self.connect_to_server_sse(
-                    server_id, config.url, config.header, exit_stack
-                )
-            else:
-                raise ValueError(
-                    "Config must contain either a command or a url for the server"
-                )
+            try:
+                if config.command:
+                    await self.connect_to_server(
+                        server_id, config.command, config.args, config.env, exit_stack
+                    )
+                elif config.url:
+                    await self.connect_to_server_sse(
+                        server_id, config.url, config.header, exit_stack
+                    )
+                else:
+                    raise ValueError(
+                        "Config must contain either a command or a url for the server"
+                    )
+            except Exception:
+                # Connection failed — signal the caller so it doesn't hang forever.
+                ready_event.set()
+                raise
             ready_event.set()
             try:
                 stop_event = asyncio.Event()
@@ -98,11 +103,11 @@ class MCPClient:
             debug(f"Connected to server {server_id}")
         except TimeoutError:
             error(f"Timeout connecting to SSE server {server_id}")
-            self._close_server(server_id)
+            await self._close_server(server_id)
             raise
         except Exception as e:
             error(f"Error connecting to SSE server {server_id}: {e}")
-            self._close_server(server_id)
+            await self._close_server(server_id)
             raise
 
     async def connect_to_server(
@@ -145,11 +150,13 @@ class MCPClient:
         return actual_tools_dict
 
     async def _close_server(self, server_id: str):
-        self.stop_event[server_id].set()
-        await self.task[server_id]
+        stop_event = self.stop_event.pop(server_id, None)
+        if stop_event is not None:
+            stop_event.set()
+        task = self.task.pop(server_id, None)
+        if task is not None:
+            await task
         self.sessions.pop(server_id, None)
-        self.stop_event.pop(server_id, None)
-        self.task.pop(server_id, None)
 
     async def cleanup(self):
         """Clean up resources"""

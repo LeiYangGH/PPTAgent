@@ -264,6 +264,17 @@ async def fetch_url(url: str, body_only: bool = True) -> str:
         except Exception as e:
             return f"Failed to load URL {url}: {e}"
 
+    # Detect common anti-bot / access-denied pages before converting
+    _ACCESS_DENIED_PATTERNS = re.compile(
+        r"access.denied|forbidden|block.*page|captcha|"
+        r"cloudflare.*ray\s*id|challenge.*platform|"
+        r"just.a.moment|checking.your.browser|"
+        r"you.don.?t.have.permission|error\s*reference",
+        re.IGNORECASE,
+    )
+    if _ACCESS_DENIED_PATTERNS.search(html[:5000]):
+        return f"Unable to fetch {url}: the website blocked automated access (Access Denied / WAF / anti-bot). Try a different source."
+
     markdown = markdownify.markdownify(html, heading_style=markdownify.ATX)
     markdown = re.sub(r"\n{3,}", "\n\n", markdown).strip()
     if body_only:

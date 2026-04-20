@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: deeppresenter/docker/Host.Dockerfile
       args:
+        # 这里可以直接传代理，或者在 .env 里传
         http_proxy: ${http_proxy:-}
         https_proxy: ${https_proxy:-}
         no_proxy: ${no_proxy:-}
@@ -12,17 +13,24 @@ services:
     ports:
       - "7861:7861"
     environment:
-      DEEPPRESENTER_HOST_WORKSPACE_BASE: ${PWD}/workspace
+      # 建议改为相对路径，增加兼容性
+      DEEPPRESENTER_HOST_WORKSPACE_BASE: ./workspace
       DEEPPRESENTER_WORKSPACE_BASE: /opt/workspace
-      DEEPPRESENTER_LOG_LEVEL: 0 # 0: debug, 10: info, 20: warning
+      DEEPPRESENTER_LOG_LEVEL: 0
+      DOCKER_API_VERSION: 1.44
+      COMPOSE_API_VERSION: 1.44
+      DOCKER_TLS_VERIFY: ""
     volumes:
       - ./workspace:/opt/workspace
       - ./deeppresenter:/usr/src/pptagent/deeppresenter
+      # 匿名卷，防止本地 node_modules 覆盖容器内预装的
       - /usr/src/pptagent/deeppresenter/html2pptx/node_modules
+      # 关键：允许容器操作宿主机 Docker
       - /var/run/docker.sock:/var/run/docker.sock
-      - /usr/bin/docker:/usr/bin/docker:ro
-      - $HOME/.cache/huggingface:/root/.cache/huggingface
-      - $HOME/.cache/modelscope:/root/.cache/modelscope
+      # 如果是 Windows，建议注释掉下面这一行，因为路径不通
+      # - /usr/bin/docker:/usr/bin/docker:ro
+      - ${HOME:-~}/.cache/huggingface:/root/.cache/huggingface
+      - ${HOME:-~}/.cache/modelscope:/root/.cache/modelscope
 
 volumes:
   deeppresenter_workspace:

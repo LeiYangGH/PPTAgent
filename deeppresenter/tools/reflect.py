@@ -26,17 +26,20 @@ async def inspect_slide(
     aspect_ratio: Literal["16:9", "4:3", "A1", "A2", "A3", "A4"] = "16:9",
 ) -> ImageContent | str:
     """
-    Read the HTML file as an image.
+    Validate the HTML slide file. If validation passes, proceed to the next slide; if it fails, fix the reported issues and re-validate.
 
     Returns:
-        ImageContent: The slide as an image content
-        str: Error message if inspection fails
+        ImageContent: The slide as an image content (reflective mode only)
+        str: Validation result message
     """
     html_path = Path(html_file).absolute()
     assert html_path.is_file() and html_path.suffix == ".html", (
         f"HTML path {html_path} does not exist or is not an HTML file"
     )
-    await convert_html_to_pptx(html_path, aspect_ratio=aspect_ratio)
+    try:
+        await convert_html_to_pptx(html_path, aspect_ratio=aspect_ratio)
+    except Exception as e:
+        return f"Validation FAILED for {html_path.name}: {e}. Fix the reported issues and call inspect_slide again."
 
     if REFLECTIVE_DESIGN:
         pdf_path = Path(tempfile.mkdtemp()) / "slide.pdf"
@@ -55,7 +58,8 @@ async def inspect_slide(
             mimeType="image/jpeg",
         )
     else:
-        return "This slide is valid."
+        slide_num = html_path.stem.split("_")[-1] if "_" in html_path.stem else html_path.stem
+        return f"Validation PASSED for {html_path.name}. This slide is valid. Proceed to generate the next slide (slide_{int(slide_num)+1:02d}.html). Do NOT rewrite this slide again."
 
 
 @mcp.tool()

@@ -67,8 +67,8 @@
             "$WORKSPACE_ID",
             "-i",
             "--rm",
-            "-v",
-            "$HOST_WORKSPACE:$WORKSPACE",
+            "--volumes-from",
+            "deeppresenter-host",
             "-w",
             "$WORKSPACE",
             "deeppresenter-sandbox"

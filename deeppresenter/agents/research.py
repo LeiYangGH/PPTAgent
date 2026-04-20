@@ -1,11 +1,16 @@
 from pathlib import Path
 
+from deeppresenter.utils.constants import MAX_AGENT_TURNS
 from deeppresenter.utils.typings import InputRequest
 
 from .agent import Agent
 
 
 class Research(Agent):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("max_turns", MAX_AGENT_TURNS)
+        super().__init__(*args, **kwargs)
+
     async def loop(self, req: InputRequest, outline_path: Path | None = None):
 
         while True:

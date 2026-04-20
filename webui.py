@@ -334,7 +334,7 @@ class ChatDemo:
                         instruction=message or "请根据上传的附件制作 PPT",
                         template=template_value,
                         attachments=attachments or [],
-                        num_pages=str(selected_num_pages),
+                        num_pages=str(selected_num_pages) if selected_num_pages is not None else None,
                         convert_type=selected_convert_type,
                     )
                 ):

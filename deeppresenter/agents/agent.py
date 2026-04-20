@@ -197,11 +197,12 @@ class Agent:
                 raise RuntimeError(
                     f"{self.name} exceeded max turns: {self.turn_count - 1}/{self.max_turns}"
                 )
-            if self.max_turns - self.turn_count < 2:
+            remaining = self.max_turns - self.turn_count
+            if remaining <= 5 and remaining > 0:
                 self.chat_history[-1].content.append(
                     {
                         "type": "text",
-                        "text": f"You have only {self.max_turns - self.turn_count} turn left. Finish the remaing work soonly and call `finalize` immediately.",
+                        "text": f"<URGENT>You have only {remaining} turn(s) left out of {self.max_turns}. You MUST call `finalize` NOW with whatever you have completed so far. Do NOT start any new tasks or slides.</URGENT>",
                     }
                 )
 

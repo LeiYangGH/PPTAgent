@@ -174,6 +174,7 @@ class AgentLoop:
                     self.language,
                 )
                 self.agent = self.designagent
+                design_interrupted = False
                 try:
                     async for msg in self.designagent.loop(request, md_file):
                         if isinstance(msg, str):
@@ -183,15 +184,45 @@ class AgentLoop:
                             self.intermediate_output["slide_html_dir"] = slide_html_dir
                             break
                         yield msg
+                except RuntimeError as e:
+                    if "exceeded max turns" in str(e):
+                        warning(f"Design agent exceeded max turns, attempting to convert already-generated slides")
+                        design_interrupted = True
+                    else:
+                        error_message = f"Design agent failed with error: {e}\n{traceback.format_exc()}"
+                        error(error_message)
+                        raise
                 except Exception as e:
-                    error_message = (
-                        f"Design agent failed with error: {e}\n{traceback.format_exc()}"
-                    )
+                    error_message = f"Design agent failed with error: {e}\n{traceback.format_exc()}"
                     error(error_message)
-                    raise e
+                    raise
                 finally:
                     self.designagent.save_history()
                     self.save_results()
+
+                # If Design was interrupted by max_turns, try to salvage existing slides
+                if design_interrupted:
+                    # Look for slides in the most likely workspace subdirectories
+                    slide_html_dir = self.intermediate_output.get("slide_html_dir")
+                    if slide_html_dir is None:
+                        # Search for any slides/ directory with HTML files
+                        for candidate in sorted(self.workspace.rglob("slides")):
+                            if candidate.is_dir() and list(candidate.glob("slide_*.html")):
+                                slide_html_dir = candidate
+                                break
+                    if slide_html_dir is None or not list(slide_html_dir.glob("slide_*.html")):
+                        yield ChatMessage(
+                            role=Role.SYSTEM,
+                            content=f"Design agent exceeded max turns and no slides were found. Task incomplete.",
+                        )
+                        return
+                    self.intermediate_output["slide_html_dir"] = slide_html_dir
+                    warning(f"Salvaging {len(list(slide_html_dir.glob('slide_*.html')))} existing slides from {slide_html_dir}")
+                    yield ChatMessage(
+                        role=Role.SYSTEM,
+                        content=f"Design agent reached max turns. Converting {len(list(slide_html_dir.glob('slide_*.html')))} already-generated slides to PPTX.",
+                    )
+
                 pptx_path = self.workspace / f"{md_file.stem}.pptx"
                 try:
                     # ? this feature is in experimental stage
