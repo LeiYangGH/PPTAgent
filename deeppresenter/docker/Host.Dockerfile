@@ -1,5 +1,15 @@
-FROM node:lts-bookworm-slim
+# 使用镜像源加速基础镜像拉取
+FROM docker.1ms.run/node:lts-bookworm-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# 设置代理环境变量（构建时使用本地 7890 代理）
+ARG http_proxy=http://host.docker.internal:7890
+ARG https_proxy=http://host.docker.internal:7890
+ARG no_proxy=localhost,127.0.0.1
+
+# 配置 apt 使用镜像源
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources || \
+    sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
 
 # Install ca-certificates first to avoid GPG signature issues, then other packages
 RUN apt-get update && \
@@ -70,8 +80,18 @@ RUN uv venv --python 3.13 $VIRTUAL_ENV && \
 RUN /opt/.venv/bin/playwright install chromium
 RUN modelscope download --model forceless/fasttext-language-id
 
+# Install poppler-utils for PDF processing
 RUN apt install -y poppler-utils
-RUN apt install -y docker.io
+
+# Install Docker CLI (from Aliyun mirror for China, using proxy)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl gnupg && \
+    curl -fsSL -x http://host.docker.internal:7890 https://mirrors.aliyun.com/docker-ce/linux/debian/gpg | apt-key add - && \
+    echo "deb [arch=amd64] https://mirrors.aliyun.com/docker-ce/linux/debian bookworm stable" > /etc/apt/sources.list.d/docker.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends docker-ce-cli && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    docker --version
 
 RUN fc-cache -f
 
