@@ -45,14 +45,14 @@
     },
     {
         "name": "search",
-        "description": "Web search tools",
+        "description": "Web search tools (Tavily recommended for China, SerpAPI alternative)",
         "command": "python3",
         "args": [
             "$PACKAGE_DIR/tools/search.py"
         ],
         "env": {
             "TAVILY_API_KEY": "your_tavily_api_key_here",
-            "SERPAPI_KEY": "your_seriapi_api_key_here"
+            "SERPAPI_KEY": ""
         },
         "network": true
     },

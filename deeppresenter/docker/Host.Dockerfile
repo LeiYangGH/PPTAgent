@@ -2,10 +2,10 @@
 FROM docker.1ms.run/node:lts-bookworm-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# 设置代理环境变量（构建时使用本地 7890 代理）
-ARG http_proxy=http://host.docker.internal:7890
-ARG https_proxy=http://host.docker.internal:7890
-ARG no_proxy=localhost,127.0.0.1
+# Set proxy environment variables (can be overridden by docker-compose build args)
+ARG http_proxy=${http_proxy:-}
+ARG https_proxy=${https_proxy:-}
+ARG no_proxy=${no_proxy:-}
 
 # 配置 apt 使用镜像源
 RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources || \
@@ -62,6 +62,12 @@ WORKDIR /usr/src/pptagent
 
 COPY . .
 
+# Configure npm to use Taobao registry for China
+RUN npm config set registry https://registry.npmmirror.com
+
+# Use npmmirror for Playwright browser downloads (China)
+ENV PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright
+
 RUN npm install --prefix deeppresenter/html2pptx --ignore-scripts && \
     npm exec --prefix deeppresenter/html2pptx playwright install chromium && \
     npm install --prefix /root/.cache/deeppresenter/html2pptx fast-glob minimist pptxgenjs playwright sharp
@@ -73,20 +79,25 @@ ENV PATH="/opt/.venv/bin:${PATH}" \
     DEEPPRESENTER_WORKSPACE_BASE="/opt/workspace"
 
 # Create Python virtual environment and install packages
+# Configure uv to use Tsinghua PyPI mirror for China
 RUN uv venv --python 3.13 $VIRTUAL_ENV && \
-    uv pip install -e .
+    uv pip install -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple -e .
 
 # Install Python Playwright browser binaries used by deeppresenter runtime.
-RUN /opt/.venv/bin/playwright install chromium
+# NOTE: Unset PLAYWRIGHT_DOWNLOAD_HOST because npmmirror may not have
+# the latest Python playwright browser build; fall back to official CDN.
+RUN unset PLAYWRIGHT_DOWNLOAD_HOST && /opt/.venv/bin/playwright install chromium
 RUN modelscope download --model forceless/fasttext-language-id
 
-# Install poppler-utils for PDF processing
-RUN apt install -y poppler-utils
+# Install LibreOffice for PPT preview conversion and poppler-utils for PDF processing
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libreoffice-impress libreoffice-writer poppler-utils && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Docker CLI (from Aliyun mirror for China, using proxy)
+# Install Docker CLI (from Aliyun mirror for China, proxy optional)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates curl gnupg && \
-    curl -fsSL -x http://host.docker.internal:7890 https://mirrors.aliyun.com/docker-ce/linux/debian/gpg | apt-key add - && \
+    curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/debian/gpg | apt-key add - && \
     echo "deb [arch=amd64] https://mirrors.aliyun.com/docker-ce/linux/debian bookworm stable" > /etc/apt/sources.list.d/docker.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends docker-ce-cli && \

@@ -20,6 +20,11 @@ services:
       DOCKER_API_VERSION: 1.44
       COMPOSE_API_VERSION: 1.44
       DOCKER_TLS_VERIFY: ""
+      # Agent 轮次限制：默认 50，长 PPT 建议调大到 80-100
+      MAX_AGENT_TURNS: 80
+      MAX_SUBAGENT_TURNS: 15
+      # 搜索 API Key（从 .env 读取）
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}"
     volumes:
       - ./workspace:/opt/workspace
       - ./deeppresenter:/usr/src/pptagent/deeppresenter

@@ -11,6 +11,8 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", message=".*urllib3.*")
 warnings.filterwarnings("ignore", message=".*chardet.*")
 warnings.filterwarnings("ignore", message=".*charset_normalizer.*")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="authlib")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="gradio")
 
 app = typer.Typer(
     help="DeepPresenter - Agentic PowerPoint Generation", no_args_is_help=True

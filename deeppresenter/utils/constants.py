@@ -81,6 +81,7 @@ You can freely install any required tools, packages, or command-line utilities t
     1. Every response must include reasoning content and a valid tool call.
     2. All tool calls are processed in parallel; do not emit tool calls with interdependencies in the same turn.
 - Toolcall Limit: You can calling up to {max_toolcall_per_turn} tools per turn.
+- Matplotlib Guideline: When using matplotlib to generate charts or illustrations, do NOT use emoji or special Unicode symbols (e.g. 🌍🌋🔥) in title, labels, or annotations. Use plain text descriptions instead, as emoji glyphs are not available in most chart fonts.
 </Task Guidelines>
 """
 

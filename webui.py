@@ -427,6 +427,12 @@ if __name__ == "__main__":
     warnings.filterwarnings(
         "ignore", category=DeprecationWarning, module="uvicorn.protocols.websockets"
     )
+    warnings.filterwarnings(
+        "ignore", category=DeprecationWarning, module="authlib"
+    )
+    warnings.filterwarnings(
+        "ignore", category=DeprecationWarning, module="gradio"
+    )
 
     serve_url = "localhost" if len(sys.argv) == 1 else sys.argv[1]
     print("Please visit http://localhost:7861")
