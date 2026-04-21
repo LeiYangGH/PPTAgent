@@ -21,6 +21,7 @@ from rich.table import Table
 from deeppresenter.main import AgentLoop, InputRequest
 from deeppresenter.utils.config import DeepPresenterConfig
 from deeppresenter.utils.outline import Outline
+from deeppresenter.utils.webview import PlaywrightConverter
 
 from .common import (
     CACHE_DIR,
@@ -362,30 +363,30 @@ def generate(
     local_model_pid = None
 
     async def run():
-        if uses_local_model(config):
-            nonlocal local_model_pid
-            local_model_pid = setup_inference()
-        session_id = str(uuid.uuid4())[:8]
-
-        loop = AgentLoop(
-            config=config,
-            session_id=session_id,
-            workspace=None,
-            language=language,
-        )
-
-        console.print(
-            Panel.fit(
-                f"[bold]Prompt:[/bold] {prompt}\n"
-                f"[bold]Attachments:[/bold] {len(attachments)}\n"
-                f"[bold]Features:[/bold] {format_active_modes(config, request)}\n"
-                f"[bold]Workspace:[/bold] {loop.workspace}\n"
-                f"[bold]Version:[/bold] {version}",
-                title="Generation Task",
-            )
-        )
-
         try:
+            if uses_local_model(config):
+                nonlocal local_model_pid
+                local_model_pid = setup_inference()
+            session_id = str(uuid.uuid4())[:8]
+
+            loop = AgentLoop(
+                config=config,
+                session_id=session_id,
+                workspace=None,
+                language=language,
+            )
+
+            console.print(
+                Panel.fit(
+                    f"[bold]Prompt:[/bold] {prompt}\n"
+                    f"[bold]Attachments:[/bold] {len(attachments)}\n"
+                    f"[bold]Features:[/bold] {format_active_modes(config, request)}\n"
+                    f"[bold]Workspace:[/bold] {loop.workspace}\n"
+                    f"[bold]Version:[/bold] {version}",
+                    title="Generation Task",
+                )
+            )
+
             rich_console = RichConsole()
             async for msg in loop.run(request):
                 if isinstance(msg, (str, Path)) and str(msg) == str(
@@ -415,6 +416,8 @@ def generate(
         except Exception as e:
             console.print(f"[bold red]✗[/bold red] Generation failed: {e}")
             raise
+        finally:
+            await PlaywrightConverter.shutdown()
 
     try:
         result = asyncio.run(run())

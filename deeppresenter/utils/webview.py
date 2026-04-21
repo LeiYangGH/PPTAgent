@@ -1,12 +1,20 @@
 import asyncio
 import tempfile
-from collections.abc import Iterable
+from collections.abc import AsyncIterator, Iterable
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Literal
+from types import TracebackType
+from typing import Any, Literal
 
 from fake_useragent import UserAgent
 from pdf2image import convert_from_path
-from playwright.async_api import async_playwright
+from playwright.async_api import (
+    Browser,
+    BrowserContext,
+    Page,
+    Playwright,
+    async_playwright,
+)
 from pypdf import PdfWriter
 
 from deeppresenter.utils.constants import PACKAGE_DIR, PDF_OPTIONS
@@ -55,15 +63,15 @@ if not all((LOCAL_NM / pkg).exists() for pkg in _REQUIRED_PACKAGES):
 
 
 class PlaywrightConverter:
-    _playwright = None
-    _browser = None
+    _playwright: Playwright | None = None
+    _browser: Browser | None = None
     _lock = asyncio.Lock()
 
-    def __init__(self):
-        self.context = None
-        self.page = None
+    def __init__(self) -> None:
+        self.context: BrowserContext | None = None
+        self.page: Page | None = None
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "PlaywrightConverter":
         """Async context manager entry"""
         async with PlaywrightConverter._lock:
             if PlaywrightConverter._browser is None:
@@ -82,10 +90,31 @@ class PlaywrightConverter:
         self.page = await self.context.new_page()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Async context manager exit, only close context"""
         if self.context:
             await self.context.close()
+            self.context = None
+            self.page = None
+
+    @classmethod
+    async def shutdown(cls) -> None:
+        """Close the shared browser and Playwright driver before the event loop exits."""
+        async with cls._lock:
+            browser = cls._browser
+            playwright = cls._playwright
+            cls._browser = None
+            cls._playwright = None
+
+            if browser is not None:
+                await browser.close()
+            if playwright is not None:
+                await playwright.stop()
 
     async def convert_to_pdf(
         self,
@@ -202,3 +231,12 @@ async def convert_html_to_pptx(
         if "Cannot find module" in details:
             raise RuntimeError("html2pptx Node dependencies are missing. ")
         raise RuntimeError(f"html2pptx failed: {details.split('at html2pptx (')[0]}")
+
+
+@asynccontextmanager
+async def playwright_lifespan(server: Any) -> AsyncIterator[dict[str, Any]]:
+    """FastMCP lifespan hook that closes the shared browser on server shutdown."""
+    try:
+        yield {}
+    finally:
+        await PlaywrightConverter.shutdown()

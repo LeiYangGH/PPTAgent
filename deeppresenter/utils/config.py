@@ -317,6 +317,10 @@ class DeepPresenterConfig(BaseModel):
     offline_mode: bool = Field(
         default=False, description="Enable offline mode, disable all network requests"
     )
+    async_tool_mode: bool = Field(
+        default=False,
+        description="Enable async tool mode and return task ids for slow tool calls",
+    )
     file_path: str = Field(description="Configuration file path")
     mcp_config_file: str = Field(
         description="MCP configuration file", default=str(PACKAGE_DIR / "mcp.json")

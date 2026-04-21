@@ -20,9 +20,9 @@ from deeppresenter.utils.constants import (
     RETRY_TIMES,
 )
 from deeppresenter.utils.log import debug, set_logger, warning
-from deeppresenter.utils.webview import PlaywrightConverter
+from deeppresenter.utils.webview import PlaywrightConverter, playwright_lifespan
 
-mcp = FastMCP(name="Search")
+mcp = FastMCP(name="Search", lifespan=playwright_lifespan)
 
 FAKE_UA = UserAgent()
 
