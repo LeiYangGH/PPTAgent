@@ -59,6 +59,7 @@ class AgentEnv:
         if isinstance(workspace, str):
             workspace = Path(workspace)
         self.workspace = workspace.absolute()
+        self.workspace.mkdir(parents=True, exist_ok=True)
         self.cutoff_len = cutoff_len
         self.mcp_configs = []
         with open(config.mcp_config_file, encoding="utf-8") as f:

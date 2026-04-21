@@ -22,30 +22,14 @@ _LID_MODEL = None
 
 
 def _get_lid_model():
-    from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
-    from modelscope.hub.utils.utils import get_cache_dir
+    """Get the language ID model, loading it lazily on first access.
 
-    """Get the language ID model, loading it lazily on first access."""
+    NOTE: fasttext dependency removed. Hardcoded to Chinese for simplicity.
+    To restore language detection, install fasttext and uncomment the original code.
+    """
     global _LID_MODEL
     if _LID_MODEL is None:
-        from fasttext import load_model
-        from huggingface_hub import hf_hub_download
-
-        hf_pattern = join(
-            HUGGINGFACE_HUB_CACHE,
-            "*/*/*/lid.176.bin",
-        )
-        ms_pattern = join(get_cache_dir(), "*/*/*/lid.176.bin")
-        lid_files = glob(hf_pattern) + glob(ms_pattern)
-        if lid_files:
-            _LID_MODEL = load_model(lid_files[0])
-        else:
-            _LID_MODEL = load_model(
-                hf_hub_download(
-                    repo_id="julien-c/fasttext-language-id",
-                    filename="lid.176.bin",
-                )
-            )
+        _LID_MODEL = "zh"  # Hardcoded to Chinese
     return _LID_MODEL
 
 
@@ -102,10 +86,11 @@ class ModelManager:
 
 
 def language_id(text: str) -> Language:
-    model = _get_lid_model()
-    return Language(
-        lid=model.predict(text[:1024].replace("\n", ""))[0][0].replace("__label__", "")
-    )
+    """Return language identifier for the given text.
+
+    NOTE: fasttext dependency removed. Always returns Chinese.
+    """
+    return Language.chinese()
 
 
 def get_image_model(device: str = None):

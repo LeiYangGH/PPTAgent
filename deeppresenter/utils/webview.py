@@ -48,10 +48,22 @@ LOCAL_NM = SCRIPT_PATH.parent / "node_modules"
 
 if not all((LOCAL_NM / pkg).exists() for pkg in _REQUIRED_PACKAGES):
     if all((_CACHE_NODE_MODULES / pkg).exists() for pkg in _REQUIRED_PACKAGES):
-        if LOCAL_NM.is_symlink():
-            LOCAL_NM.unlink()
-        LOCAL_NM.symlink_to(_CACHE_NODE_MODULES)
-        print(f"Symlinked node_modules: {_CACHE_NODE_MODULES} -> {LOCAL_NM}")
+        if LOCAL_NM.exists():
+            if LOCAL_NM.is_symlink():
+                LOCAL_NM.unlink()
+            elif LOCAL_NM.is_dir():
+                import shutil
+                shutil.rmtree(LOCAL_NM)
+            else:
+                LOCAL_NM.unlink()
+        try:
+            LOCAL_NM.symlink_to(_CACHE_NODE_MODULES, target_is_directory=True)
+            print(f"Symlinked node_modules: {_CACHE_NODE_MODULES} -> {LOCAL_NM}")
+        except OSError:
+            # Windows may require admin privileges for symlinks; fallback to junction or copy
+            import shutil
+            shutil.copytree(_CACHE_NODE_MODULES, LOCAL_NM, dirs_exist_ok=True)
+            print(f"Copied node_modules: {_CACHE_NODE_MODULES} -> {LOCAL_NM}")
 
 
 class PlaywrightConverter:

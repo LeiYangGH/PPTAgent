@@ -12,11 +12,8 @@ from mcp.types import ImageContent
 from deeppresenter.utils.config import DeepPresenterConfig
 from deeppresenter.utils.log import info, set_logger
 from deeppresenter.utils.webview import PlaywrightConverter, convert_html_to_pptx
-from pptagent.model_utils import _get_lid_model
-
 mcp = FastMCP("DeepPresenter")
 CONFIG = DeepPresenterConfig.load_from_file(os.getenv("CONFIG_FILE"))
-LID_MODEL = _get_lid_model()
 REFLECTIVE_DESIGN = CONFIG.design_agent.is_multimodal and CONFIG.heavy_reflect
 
 
@@ -79,8 +76,7 @@ def inspect_manuscript(md_file: str) -> dict:
     pages = [p for p in markdown.split("\n---\n") if p.strip()]
     result = defaultdict(list)
     result["num_pages"] = len(pages)
-    label = LID_MODEL.predict(markdown[:1000].replace("\n", " "))
-    result["language"] = label[0][0].replace("__label__", "")
+    result["language"] = "zh"  # Hardcoded to Chinese (fasttext removed)
 
     seen_images = set()
     for match in re.finditer(r"!\[(.*?)\]\((.*?)\)", markdown):

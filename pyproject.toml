@@ -40,7 +40,7 @@ dependencies = [
     "fake-useragent>=2.2.0",
     "fastapi[all]",
     "fastmcp>=2.10.0,<2.14.0",
-    "fasttext>=0.9.3",
+    # "fasttext>=0.9.3",  # Removed: Windows build fails, language detection hardcoded to Chinese
     "filelock>=3.0.0",
     "firecrawl-py>=4.10.2",
     "func_argparse",

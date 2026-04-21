@@ -71,8 +71,13 @@ def _build_inference_command() -> list[str]:
             f"[cyan]Local model service is not running, starting {script_path}[/cyan]"
         )
         return ["bash", str(script_path)]
-    else:
-        raise NotImplementedError(f"Local model service is not supported on {system}.")
+    if system == "windows":
+        console.print(
+            "[yellow]⚠[/yellow] Auto-starting local model service is not supported on Windows. "
+            "Please start llama-server manually, or use a remote API."
+        )
+        return None
+    raise NotImplementedError(f"Local model service is not supported on {system}.")
 
 
 def setup_inference() -> int | None:
@@ -82,7 +87,11 @@ def setup_inference() -> int | None:
 
     cmd = _build_inference_command()
     if cmd is None:
-        raise RuntimeError("Could not build inference command for this platform.")
+        console.print(
+            "[yellow]⚠[/yellow] Skipping auto-start of local model service on this platform. "
+            "Please ensure your model server is running manually."
+        )
+        return None
 
     try:
         process = subprocess.Popen(

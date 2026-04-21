@@ -6,4 +6,5 @@ __email__ = "wszh712811@gmail.com"
 
 import os
 
-assert os.name == "posix", "DeepPresenter only supports Linux and macOS"
+# NOTE: Originally restricted to posix. Windows support added with known limitations
+# (sandbox MCP server requires Docker Desktop, some paths may need manual adjustment).

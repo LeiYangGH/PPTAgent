@@ -17,12 +17,11 @@ SANDBOX_IMAGE_MIRROR = "docker.1ms.run/forceless/deeppresenter-sandbox"
 
 
 def ensure_supported_platform() -> None:
-    """Exit early on unsupported platforms."""
+    """Warn on platforms with limited support but allow continuation."""
     if platform.system().lower() == "windows":
         console.print(
-            "[bold red]✗[/bold red] Windows is not supported. Please use WSL instead."
+            "[yellow]⚠[/yellow] Windows is not fully supported. Some features (e.g., sandbox MCP) require Docker Desktop. Proceeding anyway..."
         )
-        raise SystemExit(1)
 
 
 def ensure_homebrew() -> bool:
@@ -241,9 +240,14 @@ def check_npm_dependencies():
         "[yellow]⚠[/yellow] html2pptx Node dependencies missing, installing..."
     )
 
+    npm_cmd = shutil.which("npm")
+    if npm_cmd is None:
+        console.print("[yellow]⚠[/yellow] npm not found in PATH. Please install Node.js first.")
+        return False
+
     try:
         success = run_streaming_command(
-            ["npm", "install", "--prefix", str(cache_dir), *required],
+            [npm_cmd, "install", "--prefix", str(cache_dir), *required],
             failure_message="[yellow]⚠[/yellow] Failed to install Node.js dependencies",
         )
     except FileNotFoundError:
