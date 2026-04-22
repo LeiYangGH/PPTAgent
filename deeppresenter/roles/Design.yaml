@@ -28,6 +28,83 @@ system:
       - 背景或装饰图：可全宽铺满或使用 object-fit: cover，可叠加遮罩层增强文字可读性
       - 根据图片比例/大小/数量动态调整版式，避免单栏内竖直堆叠过多图片，可采取多栏或网格式布局
     5. 对于中文内容，请在样式中明确声明为常见的中文字体，例如微软雅黑、宋体、楷体等；对于英文内容，同样使用较为常见的字体，例如Times New Roman、Calibri
+
+    <HTML合规示例>
+    ✅ 正确示例：
+    ```html
+    <div class="badge">
+      <p>DRAM涨幅</p>  <!-- 文本必须包裹在 <p>、<h1>-<h6>、<span> 等标签内 -->
+    </div>
+
+    <div class="title-container" style="background: rgba(59,130,246,0.1);">
+      <h1>标题</h1>  <!-- 背景样式仅应用于 <div>，不应用于 <h1> 等文本元素 -->
+    </div>
+
+    <div class="list-item">
+      <p>第一点</p>  <!-- 列表项内容也需包裹 -->
+    </div>
+    ```
+
+    ❌ 错误示例：
+    ```html
+    <div class="badge">DRAM涨幅</div>  <!-- ❌ 裸文本，会导致验证失败 -->
+
+    <h1 style="background: linear-gradient(...);">标题</h1>  <!-- ❌ 文本元素有背景 -->
+
+    <li style="border: 1px solid #3b82f6;">要点</li>  <!-- ❌ 边框不能加在 <li> -->
+
+    <p style="border: 1px solid #3b82f6;">说明文字</p>  <!-- ❌ 边框不能加在 <p> -->
+
+    <div class="footnote">!</div>  <!-- ❌ 标点也属于文本，不能裸写 -->
+
+    <div>直接写文本</div>  <!-- ❌ 未包裹 -->
+    ```
+
+    ✅ 列表与边框正确写法：
+    ```html
+    <div class="point-card" style="border: 1px solid #3b82f6; border-radius: 8px; padding: 10px;">
+      <ul>
+        <li><p>要点一</p></li>
+        <li><p>要点二</p></li>
+      </ul>
+    </div>
+    ```
+
+    <布局约束示例>
+    ✅ 正确布局（16:9 = 1280x720）：
+    - 底部边距：至少保留 36pt (0.5英寸)，即元素 bottom 值应 >= 36pt
+    - 使用 position:absolute + 明确的 top/left/right/bottom 值
+    - 内容高度限制：最大高度 = 720px - 36pt = 684pt
+    - 内容宽度限制：避免总宽度超过 1280px，左右均建议保留安全边距
+    - 避免使用 transform: translate() 居中（可能导致溢出计算错误）
+
+    ❌ 常见错误：
+    - 元素 bottom 值为负数或接近 0（如 bottom: -0.36"）
+    - 内容向右溢出导致水平超界
+    - 内容溢出 body 边界
+    - 多个元素堆叠导致总高度超过限制
+
+    <调用 inspect_slide 前自检清单>
+    - 检查是否存在 `<div>纯文本</div>`、`<div>!</div>` 这类裸文本
+    - 检查 `<h1>/<h2>/<p>/<li>/<span>` 是否包含 border/background/shadow
+    - 检查最底部元素与底边距离是否 >= 0.5 英寸
+    - 检查最右侧元素是否超出 1280px 画布边界
+    - 检查列表是否使用 `<ul>/<ol>`，且文本在 `<li>` 内进一步用 `<p>/<span>` 包裹
+
+    <最小可过检骨架（16:9）>
+    ```html
+    <body style="width:1280px;height:720px;margin:0;position:relative;overflow:hidden;font-family:'Microsoft YaHei',sans-serif;">
+      <div style="position:absolute;left:64px;top:48px;right:64px;">
+        <h1 style="margin:0;font-size:44px;color:#0f172a;">标题</h1>
+      </div>
+      <div style="position:absolute;left:64px;top:140px;right:64px;bottom:48px;border:1px solid #cbd5e1;padding:20px;">
+        <p style="margin:0 0 12px 0;font-size:24px;color:#334155;">要点一</p>
+        <ul style="margin:0;padding-left:24px;">
+          <li><p style="margin:0;font-size:20px;color:#475569;">要点二</p></li>
+        </ul>
+      </div>
+    </body>
+    ```
     </风格说明>
 
   en: |
@@ -58,6 +135,83 @@ system:
       - Images and tables that must be fully visible: fixed sizes, use object-fit: contain to prevent overflow/abnormal scaling
       - Background or decorative images: may be full-bleed or use object-fit: cover, and can add a mask to improve text readability
       - Dynamically adjust layout based on image aspect ratio/size/quantity; avoid vertical stacking of too many images in a single column; use multi-column or grid layouts
+
+    <HTML Compliance Examples>
+    ✅ Correct examples:
+    ```html
+    <div class="badge">
+      <p>DRAM Increase</p>  <!-- Text must be wrapped in <p>, <h1>-<h6>, <span> tags -->
+    </div>
+
+    <div class="title-container" style="background: rgba(59,130,246,0.1);">
+      <h1>Title</h1>  <!-- Background styles apply only to <div>, not to <h1> text elements -->
+    </div>
+
+    <div class="list-item">
+      <p>First point</p>  <!-- List item content also needs wrapping -->
+    </div>
+    ```
+
+    ❌ Incorrect examples:
+    ```html
+    <div class="badge">DRAM Increase</div>  <!-- ❌ Bare text, will cause validation failure -->
+
+    <h1 style="background: linear-gradient(...);">Title</h1>  <!-- ❌ Text element has background -->
+
+    <li style="border: 1px solid #3b82f6;">Key point</li>  <!-- ❌ Border on <li> is invalid -->
+
+    <p style="border: 1px solid #3b82f6;">Body text</p>  <!-- ❌ Border on <p> is invalid -->
+
+    <div class="footnote">!</div>  <!-- ❌ Punctuation is also text and must be wrapped -->
+
+    <div>Bare text here</div>  <!-- ❌ Unwrapped text -->
+    ```
+
+    ✅ Correct list + border pattern:
+    ```html
+    <div class="point-card" style="border: 1px solid #3b82f6; border-radius: 8px; padding: 10px;">
+      <ul>
+        <li><p>Point A</p></li>
+        <li><p>Point B</p></li>
+      </ul>
+    </div>
+    ```
+
+    <Layout Constraints Examples>
+    ✅ Correct layout (16:9 = 1280x720):
+    - Bottom margin: Reserve at least 36pt (0.5 inches), element bottom value should be >= 36pt
+    - Use position:absolute + explicit top/left/right/bottom values
+    - Content height limit: Max height = 720px - 36pt = 684pt
+    - Content width limit: Prevent total width from exceeding 1280px and keep side safety margins
+    - Avoid using transform: translate() for centering (may cause overflow calculation errors)
+
+    ❌ Common errors:
+    - Element bottom value is negative or close to 0 (e.g., bottom: -0.36")
+    - Content overflows to the right causing horizontal overflow
+    - Content overflows body boundaries
+    - Multiple elements stacked causing total height to exceed limit
+
+    <Pre-inspection Checklist Before inspect_slide>
+    - Check for bare text like `<div>text</div>` or `<div>!</div>`
+    - Check whether `<h1>/<h2>/<p>/<li>/<span>` uses border/background/shadow
+    - Check the lowest element keeps at least 0.5-inch distance from bottom edge
+    - Check the right-most element does not exceed the 1280px canvas
+    - Check lists use `<ul>/<ol>`, and text inside `<li>` is further wrapped with `<p>/<span>`
+
+    <Minimal Passable Skeleton (16:9)>
+    ```html
+    <body style="width:1280px;height:720px;margin:0;position:relative;overflow:hidden;font-family:'Microsoft YaHei',sans-serif;">
+      <div style="position:absolute;left:64px;top:48px;right:64px;">
+        <h1 style="margin:0;font-size:44px;color:#0f172a;">Title</h1>
+      </div>
+      <div style="position:absolute;left:64px;top:140px;right:64px;bottom:48px;border:1px solid #cbd5e1;padding:20px;">
+        <p style="margin:0 0 12px 0;font-size:24px;color:#334155;">Point A</p>
+        <ul style="margin:0;padding-left:24px;">
+          <li><p style="margin:0;font-size:20px;color:#475569;">Point B</p></li>
+        </ul>
+      </div>
+    </body>
+    ```
     </style_guidelines>
 
 instruction: |
