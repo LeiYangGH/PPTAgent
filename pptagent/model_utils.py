@@ -25,27 +25,49 @@ def _get_lid_model():
     from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
     from modelscope.hub.utils.utils import get_cache_dir
 
-    """Get the language ID model, loading it lazily on first access."""
+    """Get the language ID model, loading it lazily on first access.
+
+    Falls back to ModelScope download first (China mainland friendly),
+    then HuggingFace Hub. Returns None if all attempts fail.
+    """
     global _LID_MODEL
     if _LID_MODEL is None:
         from fasttext import load_model
-        from huggingface_hub import hf_hub_download
 
-        hf_pattern = join(
-            HUGGINGFACE_HUB_CACHE,
-            "*/*/*/lid.176.bin",
-        )
-        ms_pattern = join(get_cache_dir(), "*/*/*/lid.176.bin")
-        lid_files = glob(hf_pattern) + glob(ms_pattern)
+        # Search recursively in both HF and ModelScope caches
+        search_patterns = [
+            join(HUGGINGFACE_HUB_CACHE, "**/lid.176.bin"),
+            join(get_cache_dir(), "**/lid.176.bin"),
+        ]
+        lid_files = []
+        for pattern in search_patterns:
+            lid_files.extend(glob(pattern, recursive=True))
+
         if lid_files:
             _LID_MODEL = load_model(lid_files[0])
         else:
-            _LID_MODEL = load_model(
-                hf_hub_download(
-                    repo_id="julien-c/fasttext-language-id",
-                    filename="lid.176.bin",
+            # Try ModelScope first (better for China mainland network)
+            try:
+                from modelscope.hub.file_download import model_file_download
+
+                model_path = model_file_download(
+                    model_id="forceless/fasttext-language-id",
+                    file_path="lid.176.bin",
                 )
-            )
+                _LID_MODEL = load_model(model_path)
+            except Exception:
+                # Fall back to HuggingFace Hub
+                try:
+                    from huggingface_hub import hf_hub_download
+
+                    _LID_MODEL = load_model(
+                        hf_hub_download(
+                            repo_id="julien-c/fasttext-language-id",
+                            filename="lid.176.bin",
+                        )
+                    )
+                except Exception:
+                    _LID_MODEL = None
     return _LID_MODEL
 
 

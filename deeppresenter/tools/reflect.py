@@ -16,7 +16,10 @@ from pptagent.model_utils import _get_lid_model
 
 mcp = FastMCP("DeepPresenter")
 CONFIG = DeepPresenterConfig.load_from_file(os.getenv("CONFIG_FILE"))
-LID_MODEL = _get_lid_model()
+try:
+    LID_MODEL = _get_lid_model()
+except Exception:
+    LID_MODEL = None
 REFLECTIVE_DESIGN = CONFIG.design_agent.is_multimodal and CONFIG.heavy_reflect
 
 
@@ -79,8 +82,11 @@ def inspect_manuscript(md_file: str) -> dict:
     pages = [p for p in markdown.split("\n---\n") if p.strip()]
     result = defaultdict(list)
     result["num_pages"] = len(pages)
-    label = LID_MODEL.predict(markdown[:1000].replace("\n", " "))
-    result["language"] = label[0][0].replace("__label__", "")
+    if LID_MODEL is not None:
+        label = LID_MODEL.predict(markdown[:1000].replace("\n", " "))
+        result["language"] = label[0][0].replace("__label__", "")
+    else:
+        result["language"] = "unknown"
 
     seen_images = set()
     for match in re.finditer(r"!\[(.*?)\]\((.*?)\)", markdown):

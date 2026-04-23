@@ -1,0 +1,34 @@
+# DeepPresenter configuration
+# DeepPresenter configuration
+offline_mode: false
+context_folding: true
+
+research_agent:
+  base_url: "http://host.docker.internal:8989/v1"
+  model: "Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf"
+  api_key: "not-needed"
+
+design_agent:
+  base_url: "http://host.docker.internal:8989/v1"
+  model: "Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf"
+  api_key: "not-needed"
+
+long_context_model:
+  base_url: "http://host.docker.internal:8989/v1"
+  model: "Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf"
+  api_key: "not-needed"
+
+# # this is not neccessarily required,
+
+vision_model:
+  base_url: "http://host.docker.internal:8989/v1"
+  model: "Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf"
+  api_key: "not-needed"
+
+# t2i_model:
+#   base_url: "https://ark.cn-beijing.volces.com/api/v3"
+#   model: "doubao-seedream-4.5-251128"
+#   api_key: "your_key"
+#   # sampling_parameters:
+#   #   response_format: "b64_json"
+#   #   extra_body: { "watermark": False }
