@@ -184,8 +184,13 @@ elif len(TAVILY_KEYS):
         debug(f"search_web via Tavily query={query!r}")
         kwargs: dict[str, Any] = {
             "query": query,
+            "search_depth": "basic",
             "max_results": max_results,
             "include_images": False,
+            "include_image_descriptions": False,
+            "include_favicon": True,
+            "include_usage": True,
+            "country": "china",
         }
         if time_range:
             kwargs["time_range"] = time_range
@@ -210,7 +215,14 @@ elif len(TAVILY_KEYS):
         """
         debug(f"search_images via Tavily query={query!r}")
         result = await _tavily_search(
+            query=query,
+            search_depth="basic",
+            max_results=3,
+            include_images=True,
             include_image_descriptions=True,
+            include_favicon=True,
+            include_usage=True,
+            country="china",
         )
         images = [
             {"url": img["url"], "description": img["description"]}
