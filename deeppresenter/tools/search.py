@@ -308,6 +308,18 @@ async def download_file(url: str, output_file: str) -> str:
     """
     Download a file from a URL and save it to a local path.
     """
+
+    async def _fetch_bytes(target_url: str) -> bytes:
+        async with httpx.AsyncClient(
+            headers={"User-Agent": FAKE_UA.random},
+            follow_redirects=True,
+            verify=False,
+            timeout=5.0,
+        ) as client:
+            async with client.stream("GET", target_url, timeout=5.0) as response:
+                response.raise_for_status()
+                return await response.aread()
+
     workspace = Path(os.getcwd())
     output_path = Path(output_file).resolve()
     assert output_path.is_relative_to(workspace), (
@@ -316,17 +328,10 @@ async def download_file(url: str, output_file: str) -> str:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     suffix = Path(output_path).suffix.lower()
     ext_format_map = Image.registered_extensions()
-    for retry in range(RETRY_TIMES):
+    for retry in range(3):
         try:
             await asyncio.sleep(retry)
-            async with httpx.AsyncClient(
-                headers={"User-Agent": FAKE_UA.random},
-                follow_redirects=True,
-                verify=False,
-            ) as client:
-                async with client.stream("GET", url) as response:
-                    response.raise_for_status()
-                    data = await response.aread()
+            data = await asyncio.wait_for(_fetch_bytes(url), timeout=5.0)
             try:
                 with Image.open(BytesIO(data)) as img:
                     img.load()
