@@ -8,7 +8,7 @@ system:
        - caption 仅供理解图片内容，无需强制在幻灯片中展示
        - 充分利用 caption 中包含的图片比例信息优化整体布局设计
 
-    2. 结合幻灯片文稿的主题、领域、受众等因素，制定“幻灯片母版”式的设计方案（含配色、字体等），并保存至 design_plan.md
+    2. 结合幻灯片文稿的主题、领域、受众等因素，制定"幻灯片母版"式的设计方案（含配色、字体等），并保存至 design_plan.md
 
     3. 基于设计方案和文稿内容逐页生成独立的高质量HTML文件，并保存到 slides/slide_{页码:02d}.html 中
        - 关键策略：根据需要表达的内容设计合适的版式布局（如多列布局、Z 型或 F 型内容流、杂志/海报式多栏布局）
@@ -70,26 +70,63 @@ system:
     </div>
     ```
 
-    <布局约束示例>
-    ✅ 正确布局（16:9 = 1280x720）：
-    - 底部边距：至少保留 36pt (0.5英寸)，即元素 bottom 值应 >= 36pt
-    - 使用 position:absolute + 明确的 top/left/right/bottom 值
-    - 内容高度限制：最大高度 = 720px - 36pt = 684pt
-    - 内容宽度限制：避免总宽度超过 1280px，左右均建议保留安全边距
-    - 避免使用 transform: translate() 居中（可能导致溢出计算错误）
+    <布局模型——必须理解>
+    幻灯片的可用空间是一个固定画布。以 16:9 为例：宽 1280px，高 720px。
+    所有内容必须在安全区域内渲染完毕。安全区域定义：
+    - 顶部安全边距：48px
+    - 底部安全边距：48px（0.5 英寸）
+    - 左右安全边距：64px
+    - 因此 16:9 画布可用内容区域为：left:64px, top:48px 到 right:64px, bottom:48px，即内容最大高度 = 720 - 48 - 48 = 624px
+
+    核心原则：「内容的实际渲染高度」决定是否溢出，CSS 的 bottom 属性只影响容器边界，不影响内容流。
+    - 绝对定位容器同时设置 top 和 bottom 时，容器高度 = 画布高度 - top - bottom
+    - 如果内容（文字、列表、图片）的实际高度超过容器高度，内容会溢出容器
+    - overflow:hidden 只是隐藏溢出部分，不是解决办法；验证系统检查的是渲染后的实际位置
+
+    ✅ 正确布局思路：
+    1. 先估算内容高度：每行文字高度 ≈ font-size × line-height + margin，再乘以行数
+    2. 确定容器 top 值，使得 top + 内容高度 + 48px ≤ 720px
+    3. 如果内容太多放不下，必须采取以下策略（按优先级排序）：
+       a. 改变版式：将单列改为双列或多列并排布局
+       b. 精简内容：删除次要描述文字，保留核心要点
+       c. 缩小字号：降低正文字号（但不低于 18px）
+       d. 上移起点：减小标题区域高度或图片区域高度，让内容区域从更高的位置开始
+    4. 绝对禁止：仅调大 bottom 值期望「推高」内容——这不会移动任何内容，只会压缩容器
 
     ❌ 常见错误：
-    - 元素 bottom 值为负数或接近 0（如 bottom: -0.36"）
+    - 元素渲染后的底边超出安全区域（底边位置 > 672px = 720 - 48）
     - 内容向右溢出导致水平超界
-    - 内容溢出 body 边界
     - 多个元素堆叠导致总高度超过限制
+    - 反复增大 CSS bottom 值试图修复溢出——这是无效操作
+
+    <内容量判断指南>
+    在设计版式之前，先估算内容的空间需求：
+    - 标题（44px 字号）：约 55px 高度
+    - 副标题/要点（24px 字号，line-height: 1.4）：每行约 34px
+    - 列表项（20px 字号，含 margin）：每项约 32px
+    - 段落（20px 字号，含段间距）：每段约 40-50px
+    - 图片：根据 caption 中的比例信息预估
+
+    如果估算总高度 > 624px（16:9 安全区域高度），必须在生成前调整方案：
+    - 5 项以内的列表：单列布局即可
+    - 6-10 项列表：采用双列布局
+    - 大量文字 + 图片：上下分区，或左图右文
+    - 内容实在过多：拆分到多张幻灯片
 
     <调用 inspect_slide 前自检清单>
+    - 计算：最底部元素的 top + 渲染高度 是否 ≤ 672px（16:9 画布）
     - 检查是否存在 `<div>纯文本</div>`、`<div>!</div>` 这类裸文本
     - 检查 `<h1>/<h2>/<p>/<li>/<span>` 是否包含 border/background/shadow
-    - 检查最底部元素与底边距离是否 >= 0.5 英寸
     - 检查最右侧元素是否超出 1280px 画布边界
     - 检查列表是否使用 `<ul>/<ol>`，且文本在 `<li>` 内进一步用 `<p>/<span>` 包裹
+
+    <溢出修复策略——当 inspect_slide 报告溢出时>
+    当收到 "overflows body" 或 "too close to bottom edge" 错误时，按以下顺序修复：
+    1. 审视内容量：一页放了太多内容？→ 改为多列布局或删减次要内容
+    2. 上移内容起点：减小图片区域高度、缩小标题字号、减小标题上方间距
+    3. 压缩行间距：减小 line-height（最低 1.2）和 margin
+    4. 缩小正文字号（最低 18px）
+    绝对不要：仅增大容器的 bottom 值——这不会改变内容的渲染位置
 
     <最小可过检骨架（16:9）>
     ```html
@@ -97,7 +134,7 @@ system:
       <div style="position:absolute;left:64px;top:48px;right:64px;">
         <h1 style="margin:0;font-size:44px;color:#0f172a;">标题</h1>
       </div>
-      <div style="position:absolute;left:64px;top:140px;right:64px;bottom:48px;border:1px solid #cbd5e1;padding:20px;">
+      <div style="position:absolute;left:64px;top:140px;right:64px;bottom:48px;border:1px solid #cbd5e1;padding:20px;overflow:hidden;">
         <p style="margin:0 0 12px 0;font-size:24px;color:#334155;">要点一</p>
         <ul style="margin:0;padding-left:24px;">
           <li><p style="margin:0;font-size:20px;color:#475569;">要点二</p></li>
@@ -177,26 +214,63 @@ system:
     </div>
     ```
 
-    <Layout Constraints Examples>
-    ✅ Correct layout (16:9 = 1280x720):
-    - Bottom margin: Reserve at least 36pt (0.5 inches), element bottom value should be >= 36pt
-    - Use position:absolute + explicit top/left/right/bottom values
-    - Content height limit: Max height = 720px - 36pt = 684pt
-    - Content width limit: Prevent total width from exceeding 1280px and keep side safety margins
-    - Avoid using transform: translate() for centering (may cause overflow calculation errors)
+    <Layout Model — Must Understand>
+    The slide canvas is a fixed-size box. For 16:9: width 1280px, height 720px.
+    All content must render within the safe area:
+    - Top safe margin: 48px
+    - Bottom safe margin: 48px (0.5 inches)
+    - Left/right safe margins: 64px
+    - Therefore the usable content area for 16:9 is: left:64px, top:48px to right:64px, bottom:48px, i.e. max content height = 720 - 48 - 48 = 624px
+
+    Core principle: The ACTUAL RENDERED HEIGHT of content determines overflow, not CSS properties. The CSS `bottom` property only defines a container boundary — it does NOT push content upward.
+    - When an absolutely positioned container has both `top` and `bottom`, container height = canvas height - top - bottom
+    - If child content (text, lists, images) is taller than the container, it overflows out of the container
+    - `overflow:hidden` only hides overflow visually — the validator checks actual rendered positions
+
+    ✅ Correct layout thinking:
+    1. Estimate content height first: each text line ≈ font-size × line-height + margin, then multiply by number of lines
+    2. Set the container's `top` value so that: top + content height + 48px ≤ 720px
+    3. If content won't fit, apply these strategies (in priority order):
+       a. Change layout: convert single column to two-column or multi-column side-by-side layout
+       b. Trim content: remove secondary descriptions, keep core points only
+       c. Reduce font size: lower body font size (but not below 18px)
+       d. Move content up: shrink title area or image area height so content starts higher
+    4. NEVER just increase the container's `bottom` value hoping to "push content up" — this does nothing to move content
 
     ❌ Common errors:
-    - Element bottom value is negative or close to 0 (e.g., bottom: -0.36")
+    - Rendered bottom edge of elements exceeds safe area (bottom position > 672px = 720 - 48)
     - Content overflows to the right causing horizontal overflow
-    - Content overflows body boundaries
-    - Multiple elements stacked causing total height to exceed limit
+    - Multiple elements stacked causing total height to exceed the limit
+    - Repeatedly increasing CSS `bottom` value to try to fix overflow — this is a no-op
+
+    <Content Volume Planning Guide>
+    Before designing a layout, estimate the space requirements:
+    - Title (44px font): ~55px height
+    - Subtitle/key point (24px font, line-height: 1.4): ~34px per line
+    - List item (20px font, with margin): ~32px per item
+    - Paragraph (20px font, with spacing): ~40-50px per paragraph
+    - Images: estimate based on caption aspect ratio info
+
+    If estimated total height > 624px (16:9 safe area), adjust the plan BEFORE generating:
+    - 5 items or fewer: single column is fine
+    - 6-10 items: use two-column layout
+    - Heavy text + images: split into top/bottom zones, or left-image right-text
+    - Too much content: split across multiple slides
 
     <Pre-inspection Checklist Before inspect_slide>
+    - Calculate: does the bottom-most element's top + rendered height ≤ 672px (for 16:9)?
     - Check for bare text like `<div>text</div>` or `<div>!</div>`
     - Check whether `<h1>/<h2>/<p>/<li>/<span>` uses border/background/shadow
-    - Check the lowest element keeps at least 0.5-inch distance from bottom edge
     - Check the right-most element does not exceed the 1280px canvas
     - Check lists use `<ul>/<ol>`, and text inside `<li>` is further wrapped with `<p>/<span>`
+
+    <Overflow Fix Strategy — When inspect_slide Reports Overflow>
+    When you receive "overflows body" or "too close to bottom edge" errors, fix in this order:
+    1. Assess content volume: too much content on one page? → switch to multi-column layout or trim secondary content
+    2. Move content starting point up: reduce image area height, shrink title font, reduce top spacing
+    3. Compress line spacing: reduce line-height (minimum 1.2) and margin
+    4. Reduce body font size (minimum 18px)
+    NEVER: just increase the container's `bottom` value — this will NOT change where content renders
 
     <Minimal Passable Skeleton (16:9)>
     ```html
@@ -204,7 +278,7 @@ system:
       <div style="position:absolute;left:64px;top:48px;right:64px;">
         <h1 style="margin:0;font-size:44px;color:#0f172a;">Title</h1>
       </div>
-      <div style="position:absolute;left:64px;top:140px;right:64px;bottom:48px;border:1px solid #cbd5e1;padding:20px;">
+      <div style="position:absolute;left:64px;top:140px;right:64px;bottom:48px;border:1px solid #cbd5e1;padding:20px;overflow:hidden;">
         <p style="margin:0 0 12px 0;font-size:24px;color:#334155;">Point A</p>
         <ul style="margin:0;padding-left:24px;">
           <li><p style="margin:0;font-size:20px;color:#475569;">Point B</p></li>

@@ -216,10 +216,27 @@ class Agent:
             self.log_message(self.chat_history[-1])
 
         with timer(f"{self.name} Agent LLM call"):
-            response = await self.llm.run(
-                messages=self.chat_history,
-                tools=self.tools,
-            )
+            try:
+                response = await self.llm.run(
+                    messages=self.chat_history,
+                    tools=self.tools,
+                )
+            except Exception as e:
+                err_msg = str(e).lower()
+                if (
+                    "exceed" in err_msg and "context" in err_msg
+                    and self.context_warning == -1
+                ):
+                    info(
+                        f"{self.name} context overflow detected, compacting history"
+                    )
+                    await self.compact_history()
+                    response = await self.llm.run(
+                        messages=self.chat_history,
+                        tools=self.tools,
+                    )
+                else:
+                    raise
             if response.usage is not None:
                 self.cost += response.usage
                 self.context_length = response.usage.total_tokens

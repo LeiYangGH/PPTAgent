@@ -1,39 +1,13 @@
-我发现tavily默认的调用方式 虽然是返回了结果，但是默认的参数没直接的素材，
-也没针对中国搜索优化，结果的网站很多是没法从中国大陆访问的。
-我刚刚在tavily官网api测试了下，发现如下的参数可以返回中国的结果，且有可能直接包含素材。
-你看看能否帮我修改代码，让它使用我的api 配置：
+之前说10张ppt以后上下文就超出llm限度了，所以一直toolcall json内容被截断，
+所以llama-server拒绝错误格式，重试10次后失败。
 
-下面是python和js示例
-# To install: pip install tavily-python
-from tavily import TavilyClient
-client = TavilyClient("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")
-response = client.search(
-    query="常见自然灾害",
-    search_depth="basic",
-    max_results=3,
-    include_images=True,
-    include_image_descriptions=True,
-    include_favicon=True,
-    include_usage=True,
-    country="china"
-)
-print(response)
+刚刚我把design llm配置为了在线的qwen-flash模型，见deeppresenter\config.yaml
+但没想到再次运行两次还是有错，而且基本是差不多问题。
 
+ppt-agent日志见ppt-agent.txt
+llm日志见llm.txt
 
-// To install: npm i @tavily/core
-const { tavily } = require('@tavily/core');
-const client = tavily({ apiKey: "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" });
-client.search("常见自然灾害", {
-    searchDepth: "basic",
-    maxResults: 3,
-    includeImages: true,
-    includeImageDescriptions: true,
-    includeFavicon: true,
-    includeUsage: true,
-    country: "china"
-})
-.then(console.log);
-
+请你分析并建议解决方案
 -----
 
 
@@ -45,7 +19,7 @@ C:\local\llama-b8036-bin-win-cuda-13.1-x64\llama-server.exe `
     --mmproj "D:\models\Qwen3.6-27B-GGUF\mmproj-F16.gguf" `
     --port 8989 `
     -np 1 `
-    -c 32768 `
+    -c 65536 `
     -b 4096 -ub 4096 `
     -ctk q4_0 -ctv q4_0 `
     --flash-attn on `
@@ -59,7 +33,7 @@ C:\local\llama-b8036-bin-win-cuda-13.1-x64\llama-server.exe `
 | `-m` | Q3_K_XL (14GB) | 比 Q4_K_XL (17GB) 省 3GB VRAM，留给 KV cache |
 | `--mmproj` | mmproj-F16.gguf | 视觉编码器，多模态输入必需 |
 | `-np 1` | 单并行槽 | PPTAgent 串行调用，多槽无意义且浪费 VRAM |
-| `-c 32768` | 32K 上下文 | 从 16K 提到 32K，满足 PPTAgent research 阶段长输出需求 |
+| `-c 65536` | 64K 上下文 | 从 32K 提到 64K，Research Agent 上下文增长快，需要更多余量 |
 | `-b 4096` | 逻辑 batch | prompt 处理批大小，4096 平衡速度与显存 |
 | `-ub 4096` | 物理 batch | 与 -b 对齐，避免分批调度开销 |
 | `-ctk q4_0 -ctv q4_0` | KV cache Q4 量化 | **关键**：KV cache 从 FP16 压缩到 Q4，每 token 从 ~2MB 降到 ~0.5MB，32K 上下文仅占 ~16MB |
@@ -73,12 +47,13 @@ C:\local\llama-b8036-bin-win-cuda-13.1-x64\llama-server.exe `
 | 模型权重 Q3_K_XL | ~14 GB |
 | Vision Encoder (mmproj) | ~1.2 GB |
 | CUDA / 框架开销 | ~0.5 GB |
-| KV cache (32K × Q4) | ~0.5 GB |
-| **合计** | **~16.2 GB** |
-| **剩余** | **~7.8 GB 余量** |
+| KV cache (64K × Q4) | ~1.0 GB |
+| **合计** | **~16.7 GB** |
+| **剩余** | **~7.3 GB 余量** |
 
 > 之前 Q4_K_XL + FP16 KV + 16K context 就已经 OOM，根本原因：FP16 KV cache 吞掉了 ~32MB/token 的显存。
-> 现在换 Q3 模型 + Q4 KV，省出 3GB 权重空间 + 大幅压缩 KV，32K context 也绑绑有余。
+> 现在换 Q3 模型 + Q4 KV，省出 3GB 权重空间 + 大幅压缩 KV，64K context 也绑绑有余。
+> 实测 Q4_K_XL + 32K Q4 KV 占用约 17.8GB，剩余 4.2GB，完全够开到 64K。
 -----
 
 # PPTAgent 国产化适配与稳定性加固 —— 完整操作手册
@@ -106,12 +81,12 @@ C:\local\llama-b8036-bin-win-cuda-13.1-x64\llama-server.exe `
 ### 步骤 1：启动本地 LLM 服务
 
 ```powershell
-llama-server -m "D:\models\Qwen3.6-35B-A3B-GGUF\Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf" `
-    --mmproj "D:\models\Qwen3.6-35B-A3B-GGUF\mmproj-F16.gguf" `
-    --port 8989 -np 1 -c 131072 --cache-ram 0
+llama-server -m "D:\models\Qwen3.6-27B-GGUF\Qwen3.6-27B-UD-Q3_K_XL.gguf" `
+    --mmproj "D:\models\Qwen3.6-27B-GGUF\mmproj-F16.gguf" `
+    --port 8989 -np 1 -c 65536 -ctk q4_0 -ctv q4_0 --flash-attn on --cache-ram 0
 ```
 
-> **参数说明**：`-np 1` 单槽位省 VRAM，`-c 131072` 131K 上下文足够 PPTAgent 使用，`--cache-ram 0` 不占用系统内存做 prompt cache。
+> **参数说明**：`-np 1` 单槽位省 VRAM，`-c 65536` 64K 上下文，`-ctk/q4_0 -ctv/q4_0` Q4 KV 量化节省显存，`--cache-ram 0` 不占 RAM 做 prompt cache。
 
 ### 步骤 2：启动 DeepPresenter 服务
 

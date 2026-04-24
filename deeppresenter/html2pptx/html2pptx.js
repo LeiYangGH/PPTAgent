@@ -71,8 +71,13 @@ async function getBodyDimensions(page) {
     const directions = [];
     if (widthOverflowPt > 0) directions.push(`${widthOverflowPt.toFixed(1)}pt horizontally`);
     if (heightOverflowPt > 0) directions.push(`${heightOverflowPt.toFixed(1)}pt vertically`);
-    const reminder = heightOverflowPt > 0 ? ' (Remember: leave 0.5" margin at bottom of slide)' : '';
-    errors.push(`HTML content overflows body by ${directions.join(' and ')}${reminder}`);
+    let fix = '';
+    if (heightOverflowPt > 0) {
+      fix = '. Fix by: (1) switching to multi-column layout, (2) removing secondary text, ' +
+            '(3) moving content start higher (reduce image/title height), or (4) reducing font-size. ' +
+            'Do NOT just increase the CSS "bottom" value — that only shrinks the container, it does NOT move content up';
+    }
+    errors.push(`HTML content overflows body by ${directions.join(' and ')}${fix}`);
   }
 
   return { ...bodyDimensions, errors };
@@ -140,7 +145,10 @@ function validateTextBoxPosition(slideData, bodyDimensions) {
 
         errors.push(
           `Text box "${textPrefix}" ends too close to bottom edge ` +
-          `(${distanceFromBottom.toFixed(2)}" from bottom, minimum ${minBottomMargin}" required)`
+          `(${distanceFromBottom.toFixed(2)}" from bottom, minimum ${minBottomMargin}" required). ` +
+          `This element renders at y=${el.position.y.toFixed(2)}", h=${el.position.h.toFixed(2)}", ` +
+          `bottom edge at ${bottomEdge.toFixed(2)}". ` +
+          `To fix: reduce content volume, use multi-column layout, shrink font-size, or move content start higher`
         );
       }
     }
