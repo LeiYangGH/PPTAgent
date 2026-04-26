@@ -174,6 +174,44 @@ def thinking(thought: str):
     return thought
 
 
+@mcp.tool()
+def list_workspace_files(pattern: str = "*", max_results: int = 50) -> dict:
+    """
+    List files in the current workspace directory.
+
+    Call this BEFORE searching or downloading to check if the required
+    content already exists locally.  When a match is found, reuse the
+    file path directly.
+
+    Args:
+        pattern: Glob pattern to filter files, e.g. "*.png", "images/*".
+                 Default "*" lists all files.
+        max_results: Maximum number of files to return (default 50).
+
+    Returns:
+        dict: with fields:
+            - total: number of matching files
+            - files: list of dicts with path (relative to workspace),
+                     size (bytes), type (file extension)
+    """
+    workspace = Path(os.getcwd())
+    files = []
+    for f in sorted(workspace.rglob(pattern)):
+        if not f.is_file():
+            continue
+        # Skip hidden dirs and .history
+        if any(p.startswith(".") for p in f.relative_to(workspace).parts):
+            continue
+        files.append({
+            "path": f.relative_to(workspace).as_posix(),
+            "size": f.stat().st_size,
+            "type": f.suffix.lower(),
+        })
+        if len(files) >= max_results:
+            break
+    return {"total": len(files), "files": files}
+
+
 @mcp.tool(exclude_args=["agent_name"])
 def finalize(outcome: str, agent_name: str = "") -> str:
     """

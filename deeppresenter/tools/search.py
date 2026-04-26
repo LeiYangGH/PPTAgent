@@ -1,6 +1,9 @@
 import asyncio
+import hashlib
+import json
 import os
 import re
+import shutil
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Literal
@@ -15,6 +18,7 @@ from playwright.async_api import TimeoutError
 from trafilatura import extract
 
 from deeppresenter.utils.constants import (
+    DOWNLOAD_CACHE,
     MAX_RETRY_INTERVAL,
     MCP_CALL_TIMEOUT,
     RETRY_TIMES,
@@ -25,6 +29,42 @@ from deeppresenter.utils.webview import PlaywrightConverter
 mcp = FastMCP(name="Search")
 
 FAKE_UA = UserAgent()
+
+_DOWNLOAD_INDEX_PATH = DOWNLOAD_CACHE / ".index.json"
+
+
+def _load_download_index() -> dict[str, dict]:
+    """Load the download cache index mapping URL hashes to cache entries."""
+    if _DOWNLOAD_INDEX_PATH.exists():
+        try:
+            with open(_DOWNLOAD_INDEX_PATH, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def _save_download_index(index: dict[str, dict]) -> None:
+    """Save the download cache index atomically."""
+    DOWNLOAD_CACHE.mkdir(parents=True, exist_ok=True)
+    tmp = _DOWNLOAD_INDEX_PATH.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(index, f, ensure_ascii=False, indent=2)
+    tmp.replace(_DOWNLOAD_INDEX_PATH)
+
+
+def _url_hash(url: str) -> str:
+    """Return a stable SHA256 hex digest for a URL."""
+    return hashlib.sha256(url.encode("utf-8")).hexdigest()
+
+
+def _cache_path_for_url(url: str, suffix: str = "") -> Path:
+    """Return the canonical cache file path for a URL."""
+    h = _url_hash(url)
+    # shard by first 2 chars to avoid too many files in one dir
+    shard = h[:2]
+    ext = suffix.lower() if suffix else ".bin"
+    return DOWNLOAD_CACHE / shard / f"{h}{ext}"
 
 # Google (SerpAPI)
 GOOGLE_KEYS = [i.strip() for i in os.getenv("SERPAPI_KEY", "").split(",") if i.strip()]
@@ -307,6 +347,9 @@ async def fetch_url(url: str, body_only: bool = True) -> str:
 async def download_file(url: str, output_file: str) -> str:
     """
     Download a file from a URL and save it to a local path.
+
+    If the same URL has been downloaded before, the cached copy is reused
+    automatically to avoid redundant network requests.
     """
 
     async def _fetch_bytes(target_url: str) -> bytes:
@@ -328,6 +371,30 @@ async def download_file(url: str, output_file: str) -> str:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     suffix = Path(output_path).suffix.lower()
     ext_format_map = Image.registered_extensions()
+
+    # ── Check global download cache first ────────────────────────────────
+    index = _load_download_index()
+    url_h = _url_hash(url)
+    cache_entry = index.get(url_h)
+    if cache_entry:
+        cached_file = Path(cache_entry["path"])
+        if cached_file.exists() and cached_file.stat().st_size > 0:
+            try:
+                shutil.copy2(cached_file, output_path)
+                # If the cached file is an image, report its resolution
+                try:
+                    with Image.open(output_path) as img:
+                        width, height = img.size
+                        return (
+                            f"File reused from cache: {output_path} "
+                            f"(resolution: {width}x{height}, cached from {url})"
+                        )
+                except Exception:
+                    return f"File reused from cache: {output_path} (cached from {url})"
+            except Exception as e:
+                warning(f"Cache copy failed for {url}: {e}, falling back to download")
+
+    # ── Download and write to both workspace and cache ───────────────────
     for retry in range(3):
         try:
             await asyncio.sleep(retry)
@@ -343,10 +410,30 @@ async def download_file(url: str, output_file: str) -> str:
                         note = " (converted from WEBP to PNG)"
                     img.save(output_path, format=save_format)
                     width, height = img.size
+                    # Save to global cache
+                    cache_path = _cache_path_for_url(url, output_path.suffix)
+                    cache_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(output_path, cache_path)
+                    index[url_h] = {
+                        "url": url,
+                        "path": str(cache_path),
+                        "size": cache_path.stat().st_size,
+                    }
+                    _save_download_index(index)
                     return f"File downloaded to {output_path} (resolution: {width}x{height}){note}"
             except Exception:
                 with open(output_path, "wb") as f:
                     f.write(data)
+                # Save non-image files to cache as well
+                cache_path = _cache_path_for_url(url, suffix or ".bin")
+                cache_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(output_path, cache_path)
+                index[url_h] = {
+                    "url": url,
+                    "path": str(cache_path),
+                    "size": cache_path.stat().st_size,
+                }
+                _save_download_index(index)
             break
         except Exception:
             pass
@@ -354,6 +441,54 @@ async def download_file(url: str, output_file: str) -> str:
         return f"Failed to download file from {url}"
 
     return f"File downloaded to {output_path}"
+
+
+@mcp.tool()
+def list_download_cache(keyword: str = "") -> dict:
+    """
+    List files in the global download cache.
+
+    Call this BEFORE searching or downloading to check if the required
+    content already exists locally.  When a match is found, reuse the
+    cached file path directly \u2014 no need to download again.
+
+    Args:
+        keyword: Optional keyword to filter results by filename or URL.
+                 Empty string returns all cached files.
+
+    Returns:
+        dict: with fields:
+            - total: number of matching files
+            - files: list of dicts with path, url, size
+    """
+    index = _load_download_index()
+    results = []
+    kw = keyword.lower()
+    for entry in index.values():
+        p = Path(entry["path"])
+        if not p.exists():
+            continue
+        if kw and kw not in p.name.lower() and kw not in entry.get("url", "").lower():
+            continue
+        results.append({
+            "path": str(p),
+            "url": entry.get("url", ""),
+            "size": p.stat().st_size,
+        })
+    # Also include legacy files (no URL mapping, named by original filename)
+    legacy_dir = DOWNLOAD_CACHE / "legacy"
+    if legacy_dir.exists():
+        for f in legacy_dir.rglob("*"):
+            if not f.is_file():
+                continue
+            if kw and kw not in f.name.lower():
+                continue
+            results.append({
+                "path": str(f),
+                "url": "",
+                "size": f.stat().st_size,
+            })
+    return {"total": len(results), "files": results}
 
 
 if __name__ == "__main__":

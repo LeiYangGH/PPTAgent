@@ -205,7 +205,7 @@ class LLM(BaseModel):
 
         model_lower = self._endpoints[0].model.lower()
         if self.is_multimodal is None:
-            if any(word in model_lower for word in ("gpt", "claude", "gemini", "vl")):
+            if any(word in model_lower for word in ("gpt", "claude", "gemini", "vl", "qwen")):
                 self.is_multimodal = True
                 debug(
                     f"Model {self._endpoints[0].model} is detected as multimodal model, setting `is_multimodal` to True"

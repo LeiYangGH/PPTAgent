@@ -33,6 +33,7 @@ WORKSPACE_BASE = Path(
         str(Path.home() / ".cache/deeppresenter"),
     )
 )
+DOWNLOAD_CACHE = WORKSPACE_BASE / "downloads"
 TOOL_CACHE = PACKAGE_DIR / ".tools.json"
 
 GLOBAL_ENV_LIST = [
@@ -103,11 +104,12 @@ In general, you should use subagents in scenarios that can be parallelized at sc
 MA_RRESENTER_PROMPT = """
 <Guide on Subagents>
 You can use subagents to execute multiple complex tasks in parallel. They have the same capabilities as you, but start with empty context.
-Therefore, you should first define a global visual theme, including a detailed design specification such as the background and accent colors.
+Therefore, you should first define a global visual theme as a shared stylesheet file (slides/style.css), including CSS reset, body base styles, color variables, common decorative elements, and reusable component classes.
 Then, distribute the generation of each slide draft to different subagents.
 The subagent tool accepts a minimal `task` and a `context_file`.
-Before calling the subagent, write the shared visual system, manuscript excerpt, slide scope, constraints, and handoff requirements into a local file.
-Keep `task` as a short action such as "Generate slide 1 according to the global visual system".
+Before calling the subagent, write the shared visual system path (slides/style.css), manuscript excerpt, slide scope, constraints, and handoff requirements into a local file.
+Each subagent should `read_file("slides/style.css")` to load the shared design system, then generate only page-specific layout CSS in the slide HTML's `<style>` tag, referencing the shared stylesheet via `<link rel="stylesheet" href="style.css">`.
+Keep `task` as a short action such as "Generate slide 1 using the shared style.css".
 </Guide on Subagents>
 """
 

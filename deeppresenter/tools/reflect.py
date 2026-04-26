@@ -21,15 +21,96 @@ try:
 except Exception:
     LID_MODEL = None
 REFLECTIVE_DESIGN = CONFIG.design_agent.is_multimodal and CONFIG.heavy_reflect
+WORKSPACE = Path(os.getenv("WORKSPACE", "."))
+
+
+def _check_image_coverage(
+    html_path: Path, manuscript_file: str | None
+) -> list[str]:
+    """Check that images referenced in the manuscript page are present in the HTML.
+
+    Returns a list of warning messages; empty list means all images are covered.
+    """
+    if manuscript_file is None:
+        return []
+
+    md_path = Path(manuscript_file)
+    if not md_path.exists():
+        for candidate in [
+            html_path.parent.parent / manuscript_file,
+            WORKSPACE / manuscript_file,
+        ]:
+            if candidate.exists():
+                md_path = candidate
+                break
+        else:
+            return []
+
+    if not md_path.exists():
+        return []
+
+    slide_num_match = re.search(r"(\d+)", html_path.stem)
+    if slide_num_match is None:
+        return []
+    slide_idx = int(slide_num_match.group(1)) - 1
+
+    with open(md_path, encoding="utf-8") as f:
+        markdown = f.read()
+
+    pages = [p for p in markdown.split("\n---\n") if p.strip()]
+    if slide_idx < 0 or slide_idx >= len(pages):
+        return []
+
+    page_content = pages[slide_idx]
+
+    md_images: list[str] = []
+    for match in re.finditer(r"!?\[(.*?)\]\((.*?)\)", page_content):
+        img_path = match.group(2).split()[0].strip("\"'")
+        if re.match(r"https?://", img_path):
+            continue
+        md_images.append(img_path)
+
+    if not md_images:
+        return []
+
+    with open(html_path, encoding="utf-8") as f:
+        html_content = f.read()
+
+    html_images: set[str] = set()
+    for match in re.finditer(r'<img[^>]+src=["\']([^"\']+)["\']', html_content):
+        html_images.add(match.group(1))
+
+    warnings: list[str] = []
+    for img_path in md_images:
+        img_filename = Path(img_path).name
+        found = any(
+            img_filename in html_src or img_path in html_src
+            for html_src in html_images
+        )
+        if not found:
+            warnings.append(
+                f"Image from manuscript NOT found in HTML: {img_path}. "
+                f"You MUST include this image using <img src=\"{img_path}\">. "
+                f"Do NOT replace it with a matplotlib/code-generated chart."
+            )
+
+    return warnings
 
 
 @mcp.tool()
 async def inspect_slide(
     html_file: str,
     aspect_ratio: Literal["16:9", "4:3", "A1", "A2", "A3", "A4"] = "16:9",
+    manuscript_file: str | None = None,
 ) -> ImageContent | str:
     """
     Validate the HTML slide file. If validation passes, proceed to the next slide; if it fails, fix the reported issues and re-validate.
+
+    Args:
+        html_file: Path to the HTML slide file to validate.
+        aspect_ratio: Slide aspect ratio (default 16:9).
+        manuscript_file: Path to the manuscript markdown file. If provided, checks that
+            all images referenced in the corresponding manuscript page appear in the HTML.
 
     Returns:
         ImageContent: The slide as an image content (reflective mode only)
@@ -39,10 +120,23 @@ async def inspect_slide(
     assert html_path.is_file() and html_path.suffix == ".html", (
         f"HTML path {html_path} does not exist or is not an HTML file"
     )
+
+    image_warnings = _check_image_coverage(html_path, manuscript_file)
+
     try:
         await convert_html_to_pptx(html_path, aspect_ratio=aspect_ratio)
     except Exception as e:
-        return f"Validation FAILED for {html_path.name}: {e}. Fix the reported issues and call inspect_slide again."
+        error_msg = f"Validation FAILED for {html_path.name}: {e}. Fix the reported issues and call inspect_slide again."
+        if image_warnings:
+            error_msg += "\n\nImage coverage issues:\n" + "\n".join(image_warnings)
+        return error_msg
+
+    if image_warnings:
+        return (
+            f"Validation FAILED for {html_path.name} due to missing images:\n"
+            + "\n".join(image_warnings)
+            + "\n\nFix these issues by adding the missing <img> tags and call inspect_slide again."
+        )
 
     if REFLECTIVE_DESIGN:
         pdf_path = Path(tempfile.mkdtemp()) / "slide.pdf"

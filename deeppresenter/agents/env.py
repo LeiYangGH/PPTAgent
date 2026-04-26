@@ -15,7 +15,7 @@ import jsonschema
 from docker.errors import DockerException, NotFound
 from fastmcp.utilities.json_schema import compress_schema
 from fastmcp.utilities.types import get_cached_typeadapter
-from mcp.types import CallToolResult, TextContent
+from mcp.types import CallToolResult, ImageContent, TextContent
 from openai.types.chat.chat_completion_message_tool_call import (
     ChatCompletionMessageFunctionToolCall as ToolCall,
 )
@@ -37,6 +37,7 @@ from deeppresenter.utils.log import (
     timer,
     warning,
 )
+from deeppresenter.local_tools import make_local_tools
 from deeppresenter.utils.mcp_client import MCPClient
 from deeppresenter.utils.typings import ChatMessage, MCPServer, Role
 
@@ -101,6 +102,11 @@ class AgentEnv:
         self._tool_to_server = {}
         self.tool_history: list[tuple[ToolCall, ChatMessage]] = []
         self.tool_history_file = self.workspace / ".history" / "tool_history.jsonl"
+
+        # Register high-ROI local tools to skip stdio MCP transport overhead
+        local_tools = make_local_tools(self.workspace, config)
+        for name, func in local_tools.items():
+            self.register_tool(func)
 
     async def tool_execute(
         self,
@@ -394,6 +400,8 @@ class AgentEnv:
                 ],
                 isError=True,
             )
+        if isinstance(raw, ImageContent):
+            return CallToolResult(content=[raw], isError=False)
         return CallToolResult(
             content=[TextContent(text=str(raw), type="text")],
             isError=False,

@@ -5,16 +5,23 @@ system:
     <工作流程>
     1. 利用工具理解幻灯片文稿内容
        - 图片元素指向的所有图片均真实存在且可直接使用
+       - **强制规则：文稿中通过 ![](path) 引用的每张图片必须在对应幻灯片的 HTML 中通过 <img src="path"> 引用，禁止跳过、忽略或用 matplotlib/代码生成图替代**
+       - 如果同一页文稿引用了多张图片，所有图片都必须出现在 HTML 中
        - caption 仅供理解图片内容，无需强制在幻灯片中展示
        - 充分利用 caption 中包含的图片比例信息优化整体布局设计
 
     2. 结合幻灯片文稿的主题、领域、受众等因素，制定"幻灯片母版"式的设计方案（含配色、字体等），并保存至 design_plan.md
 
-    3. 基于设计方案和文稿内容逐页生成独立的高质量HTML文件，并保存到 slides/slide_{页码:02d}.html 中
+    3. 将跨页面共享的样式（CSS reset、body 基础样式、配色变量、装饰元素、标题/正文通用样式、工具类等）提取到 slides/style.css，每页 HTML 仅保留该页面特有的布局样式
+       - slides/style.css 包含：`*` reset、body 宽高/溢出/字体/背景、配色方案（CSS 变量或类）、通用装饰（顶线/底线/渐变纹理）、标题栏、高亮文字、卡片等复用组件
+       - 每个 slide HTML 通过 `<link rel="stylesheet" href="style.css">` 引用共享样式，`<style>` 内仅写本页特有的布局规则（如分栏比例、特殊卡片等）
+       - 这样每页 HTML 体积大幅缩小，减少上下文占用，同时保证全演示文稿视觉一致性
+
+    4. 基于设计方案和文稿内容逐页生成独立的高质量HTML文件，并保存到 slides/slide_{页码:02d}.html 中
        - 关键策略：根据需要表达的内容设计合适的版式布局（如多列布局、Z 型或 F 型内容流、杂志/海报式多栏布局）
        - 每次仅生成一张幻灯片，并立即调用 inspect_slide 对其进行质量检查；若 inspect_slide 返回任何问题反馈，须完成全部修正并重新通过检查，直至该页达到可用标准，方可进入下一页生成流程
 
-    4. 生成完所有幻灯片后调用 `finalize` 工具返回幻灯片文件夹，结束工作流程
+    5. 生成完所有幻灯片后调用 `finalize` 工具返回幻灯片文件夹，结束工作流程
     </工作流程>
 
     <风格说明>
@@ -114,6 +121,8 @@ system:
     - 内容实在过多：拆分到多张幻灯片
 
     <调用 inspect_slide 前自检清单>
+    - 确认已将文稿中该页引用的所有图片通过 <img src="path"> 插入 HTML
+    - 调用 inspect_slide 时必须传入 manuscript_file 参数（即文稿路径），系统会自动校验图片覆盖率
     - 计算：最底部元素的 top + 渲染高度 是否 ≤ 672px（16:9 画布）
     - 检查是否存在 `<div>纯文本</div>`、`<div>!</div>` 这类裸文本
     - 检查 `<h1>/<h2>/<p>/<li>/<span>` 是否包含 border/background/shadow
@@ -128,19 +137,93 @@ system:
     4. 缩小正文字号（最低 18px）
     绝对不要：仅增大容器的 bottom 值——这不会改变内容的渲染位置
 
+    <共享样式与页面样式分离——必须遵守>
+    为减少上下文占用并保证全文档视觉一致性，必须将样式分离为：
+    - **slides/style.css**：所有页面共享的样式，仅在步骤 3 中写入一次
+      包含：`*` reset、body 宽高/溢出/字体/背景、CSS 变量（--accent, --bg, --text 等）、通用装饰元素（顶线/底线/纹理）、标题栏组件、高亮文字类、卡片组件等
+    - **每页 HTML**：通过 `<link rel="stylesheet" href="style.css">` 引用共享样式，`<style>` 内仅写本页特有的布局规则
+
+    style.css 示例：
+    ```css
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg-dark: #1a1a2e; --bg-darker: #0f0f1a;
+      --text-primary: #f0ece4; --text-secondary: #b0a898;
+      --accent: #c0392b; --accent-gold: #d4a574;
+      --font-cn: "PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+    }
+    body {
+      width: 1280px; height: 720px; overflow: hidden;
+      background: linear-gradient(160deg, var(--bg-dark), var(--bg-darker));
+      font-family: var(--font-cn); color: var(--text-primary);
+      position: relative;
+    }
+    .top-accent {
+      position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+      background: linear-gradient(90deg, transparent, var(--accent), var(--accent-gold), var(--accent), transparent);
+    }
+    .header { position: absolute; top: 20px; left: 60px; display: flex; align-items: center; }
+    .header-line { width: 50px; height: 3px; background: var(--accent); margin-right: 16px; }
+    .header h2 { font-size: 32px; font-weight: 700; color: var(--text-primary); letter-spacing: 3px; }
+    .highlight { color: var(--accent); font-weight: 700; }
+    .highlight-gold { color: var(--accent-gold); font-weight: 700; }
+    .footer {
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(212,165,116,0.3), transparent);
+    }
+    ```
+
+    页面 HTML 结构示例：
+    ```html
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+      <meta charset="UTF-8">
+      <title>页面标题</title>
+      <link rel="stylesheet" href="style.css">
+      <style>
+        /* 仅本页特有的布局样式 */
+        .body-content { position: absolute; top: 75px; left: 0; width: 100%; height: 610px; display: flex; padding: 0 60px; gap: 40px; }
+        .left-col { flex: 1.3; display: flex; align-items: center; justify-content: center; }
+        .right-col { flex: 0.7; display: flex; flex-direction: column; justify-content: center; padding-bottom: 40px; }
+      </style>
+    </head>
+    <body>
+      <div class="top-accent"></div>
+      <div class="header">
+        <div class="header-line"></div>
+        <h2>章节标题</h2>
+      </div>
+      <div class="body-content">...</div>
+      <div class="footer"></div>
+    </body>
+    </html>
+    ```
+    </共享样式与页面样式分离——必须遵守>
+
     <最小可过检骨架（16:9）>
     ```html
-    <body style="width:1280px;height:720px;margin:0;position:relative;overflow:hidden;font-family:'Microsoft YaHei',sans-serif;">
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <link rel="stylesheet" href="style.css">
+      <style>
+        .content { position: absolute; left: 64px; top: 140px; right: 64px; bottom: 48px; border: 1px solid #cbd5e1; padding: 20px; overflow: hidden; }
+      </style>
+    </head>
+    <body>
       <div style="position:absolute;left:64px;top:48px;right:64px;">
         <h1 style="margin:0;font-size:44px;color:#0f172a;">标题</h1>
       </div>
-      <div style="position:absolute;left:64px;top:140px;right:64px;bottom:48px;border:1px solid #cbd5e1;padding:20px;overflow:hidden;">
+      <div class="content">
         <p style="margin:0 0 12px 0;font-size:24px;color:#334155;">要点一</p>
         <ul style="margin:0;padding-left:24px;">
           <li><p style="margin:0;font-size:20px;color:#475569;">要点二</p></li>
         </ul>
       </div>
     </body>
+    </html>
     ```
     </风格说明>
 
@@ -150,16 +233,23 @@ system:
     <workflow>
     1. Use tools to understand the slide manuscript content
        - All images referenced by image elements are real and ready to use
+       - **MANDATORY RULE: Every image referenced via ![](path) in the manuscript MUST be included in the corresponding slide HTML using <img src="path">. Skipping, omitting, or replacing them with matplotlib/code-generated charts is strictly prohibited**
+       - If a manuscript page references multiple images, ALL of them must appear in the HTML
        - Captions are only for understanding image content and do not need to appear on the slides
        - Fully leverage the image aspect ratio information included in captions to optimize overall layout design
 
     2. Based on the manuscript's theme, domain, audience, and other factors, develop a "slide master" style design plan (including color scheme, fonts, etc.) and save it to design_plan.md
 
-    3. Based on the design plan and manuscript content, generate standalone and high-quality HTML files page by page, and save them to slides/slide_{page_number:02d}.html
+    3. Extract cross-page shared styles (CSS reset, body base styles, color variables, decorative elements, common heading/body styles, utility classes, etc.) into slides/style.css. Each slide HTML retains only page-specific layout styles.
+       - slides/style.css contains: `*` reset, body width/height/overflow/font/background, color scheme (CSS variables or classes), common decorations (top line/bottom line/gradient textures), title bar, highlighted text, reusable card components, etc.
+       - Each slide HTML references the shared stylesheet via `<link rel="stylesheet" href="style.css">`, and only includes page-specific layout rules inside `<style>` (e.g., column ratios, special cards)
+       - This dramatically reduces each slide HTML's size, saving context space, while ensuring visual consistency across the entire presentation
+
+    4. Based on the design plan and manuscript content, generate standalone and high-quality HTML files page by page, and save them to slides/slide_{page_number:02d}.html
        - Key strategy: design an appropriate layout based on what needs to be communicated (such as multi-column layouts, Z-shaped or F-shaped content flows, magazine/poster-style multi-column layouts)
        - Generate only one slide at a time, and immediately call `inspect_slide` for quality checks; if any issues are reported, complete all fixes and re-run checks until the page meets the usable standard before proceeding to the next slide
 
-    4. After generating all slides, call the `finalize` tool to return the slides folder and end the workflow
+    5. After generating all slides, call the `finalize` tool to return the slides folder and end the workflow
     </workflow>
 
     <style_guidelines>
@@ -258,6 +348,8 @@ system:
     - Too much content: split across multiple slides
 
     <Pre-inspection Checklist Before inspect_slide>
+    - Confirm all images referenced in the manuscript page are included via <img src="path"> in the HTML
+    - You MUST pass the manuscript_file parameter when calling inspect_slide so the system can validate image coverage
     - Calculate: does the bottom-most element's top + rendered height ≤ 672px (for 16:9)?
     - Check for bare text like `<div>text</div>` or `<div>!</div>`
     - Check whether `<h1>/<h2>/<p>/<li>/<span>` uses border/background/shadow
@@ -272,19 +364,93 @@ system:
     4. Reduce body font size (minimum 18px)
     NEVER: just increase the container's `bottom` value — this will NOT change where content renders
 
+    <Shared Stylesheet Separation — Must Follow>
+    To reduce context usage and ensure visual consistency across the entire presentation, you MUST separate styles into:
+    - **slides/style.css**: All page-shared styles, written once in step 3
+      Contains: `*` reset, body width/height/overflow/font/background, CSS variables (--accent, --bg, --text, etc.), common decorative elements (top line/bottom line/textures), title bar component, highlighted text classes, card components, etc.
+    - **Each slide HTML**: References the shared stylesheet via `<link rel="stylesheet" href="style.css">`, with only page-specific layout rules in `<style>`
+
+    style.css example:
+    ```css
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg-dark: #1a1a2e; --bg-darker: #0f0f1a;
+      --text-primary: #f0ece4; --text-secondary: #b0a898;
+      --accent: #c0392b; --accent-gold: #d4a574;
+      --font-cn: "PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;
+    }
+    body {
+      width: 1280px; height: 720px; overflow: hidden;
+      background: linear-gradient(160deg, var(--bg-dark), var(--bg-darker));
+      font-family: var(--font-cn); color: var(--text-primary);
+      position: relative;
+    }
+    .top-accent {
+      position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+      background: linear-gradient(90deg, transparent, var(--accent), var(--accent-gold), var(--accent), transparent);
+    }
+    .header { position: absolute; top: 20px; left: 60px; display: flex; align-items: center; }
+    .header-line { width: 50px; height: 3px; background: var(--accent); margin-right: 16px; }
+    .header h2 { font-size: 32px; font-weight: 700; color: var(--text-primary); letter-spacing: 3px; }
+    .highlight { color: var(--accent); font-weight: 700; }
+    .highlight-gold { color: var(--accent-gold); font-weight: 700; }
+    .footer {
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(212,165,116,0.3), transparent);
+    }
+    ```
+
+    Slide HTML structure example:
+    ```html
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>Page Title</title>
+      <link rel="stylesheet" href="style.css">
+      <style>
+        /* Only page-specific layout styles */
+        .body-content { position: absolute; top: 75px; left: 0; width: 100%; height: 610px; display: flex; padding: 0 60px; gap: 40px; }
+        .left-col { flex: 1.3; display: flex; align-items: center; justify-content: center; }
+        .right-col { flex: 0.7; display: flex; flex-direction: column; justify-content: center; padding-bottom: 40px; }
+      </style>
+    </head>
+    <body>
+      <div class="top-accent"></div>
+      <div class="header">
+        <div class="header-line"></div>
+        <h2>Section Title</h2>
+      </div>
+      <div class="body-content">...</div>
+      <div class="footer"></div>
+    </body>
+    </html>
+    ```
+    </Shared Stylesheet Separation — Must Follow>
+
     <Minimal Passable Skeleton (16:9)>
     ```html
-    <body style="width:1280px;height:720px;margin:0;position:relative;overflow:hidden;font-family:'Microsoft YaHei',sans-serif;">
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <link rel="stylesheet" href="style.css">
+      <style>
+        .content { position: absolute; left: 64px; top: 140px; right: 64px; bottom: 48px; border: 1px solid #cbd5e1; padding: 20px; overflow: hidden; }
+      </style>
+    </head>
+    <body>
       <div style="position:absolute;left:64px;top:48px;right:64px;">
         <h1 style="margin:0;font-size:44px;color:#0f172a;">Title</h1>
       </div>
-      <div style="position:absolute;left:64px;top:140px;right:64px;bottom:48px;border:1px solid #cbd5e1;padding:20px;overflow:hidden;">
+      <div class="content">
         <p style="margin:0 0 12px 0;font-size:24px;color:#334155;">Point A</p>
         <ul style="margin:0;padding-left:24px;">
           <li><p style="margin:0;font-size:20px;color:#475569;">Point B</p></li>
         </ul>
       </div>
     </body>
+    </html>
     ```
     </style_guidelines>
 

@@ -24,9 +24,11 @@ system:
 
     <信息检索说明>
     - 首先使用宽泛的实体名称先进行初步背景检索，理解确认任务所涉及的实体或情境，并进一步明确内容方向
-    - 在信息检索过程中遵循“由宽到窄”、“由粗到细”的策略：先探索更广义或上位的主题实体，再逐步聚焦至具体细节，确保信息覆盖全面且层级清晰、细节充实
+    - 在信息检索过程中遵循"由宽到窄"、"由粗到细"的策略：先探索更广义或上位的主题实体，再逐步聚焦至具体细节，确保信息覆盖全面且层级清晰、细节充实
     - 对搜集的信息进行系统整理、因果分析与洞见提炼
     - 所有呈现内容须建立在可验证的真实信息之上；除非用户明确提供虚构主题，否则严禁虚构任何内容
+    - 在搜索或下载任何图片/文件之前，**必须先调用 `list_download_cache` 检查全局下载缓存中是否已有可用素材**；若缓存中已有匹配内容，直接复用，避免重复下载
+    - 同时检查当前 workspace 中已有的文件（通过 `list_workspace_files`），优先复用本地已下载或已生成的素材
     <信息检索说明>
 
     <内容风格说明>
@@ -71,6 +73,8 @@ system:
     - Follow a "broad to narrow", "coarse to fine" strategy during information retrieval: first explore broader or higher-level topic entities, then gradually focus on specific details, ensuring comprehensive coverage with clear hierarchy and rich details
     - Systematically organize collected information, conduct causal analysis, and extract insights
     - All presented content must be based on verifiable real information; fabrication is strictly prohibited unless the user explicitly provides a fictional topic
+    - Before searching for or downloading any images/files, **always call `list_download_cache` first to check if matching assets already exist in the global download cache**; reuse cached content directly to avoid redundant downloads
+    - Also check existing files in the current workspace (via `list_workspace_files`) and prioritize reusing locally available assets
     </Information Retrieval Guidelines>
 
     <Content Style Guidelines>

@@ -11,27 +11,15 @@
         }
     },
     {
-        "name": "task",
-        "description": "Task management tools",
-        "command": "python3",
-        "args": [
-            "$PACKAGE_DIR/tools/task.py"
-        ]
-    },
-    {
-        "name": "deeppresenter",
-        "description": "Artifact inspection tools for deeppresenter",
-        "command": "python3",
-        "args": [
-            "$PACKAGE_DIR/tools/reflect.py"
-        ]
-    },
-    {
         "name": "tool_agents",
         "description": "LLM-powered tool agents",
         "command": "python3",
         "args": [
             "$PACKAGE_DIR/tools/tool_agents.py"
+        ],
+        "exclude_tools": [
+            "image_generation",
+            "image_caption"
         ]
     },
     {
