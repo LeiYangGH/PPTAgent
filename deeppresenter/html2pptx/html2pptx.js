@@ -651,14 +651,15 @@ function addElements(slideData, targetSlide, pres, soft = false) {
       targetSlide.addTable(el.rows, tableOptions);
     } else {
       const lineHeight = el.style.lineSpacing || el.style.fontSize * 1.2;
-      const isSingleLine = el.position.h <= lineHeight * 1.5;
+      // Relaxed threshold: account for padding/margin that inflates rect.height
+      const isSingleLine = el.position.h <= lineHeight * 2.5;
 
       let adjustedX = el.position.x;
       let adjustedW = el.position.w;
 
-      // Single-line text needs 2% width compensation for PowerPoint rendering accuracy
+      // Single-line text needs width compensation for PowerPoint rendering accuracy
       if (isSingleLine) {
-        const widthIncrease = el.position.w * 0.02;
+        const widthIncrease = el.position.w * 0.03;
         const align = el.style.align;
 
         if (align === 'center') {
