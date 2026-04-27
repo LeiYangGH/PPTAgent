@@ -13,7 +13,7 @@ class SubAgent(Agent):
         config: DeepPresenterConfig,
         agent_env: AgentEnv,
         workspace: Path,
-        language: Literal["zh", "en"],
+        language: Literal["zh"] = "zh",
     ):
         async def delegate_subagent(short: str, task: str, context_file: str):
             """

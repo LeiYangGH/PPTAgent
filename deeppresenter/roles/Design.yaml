@@ -28,18 +28,59 @@ system:
     6. **列表规范**：必须用 <ul>/<ol> + <li>；禁止在文本中手动输入 bullet 符号（•, ▪, ◆ 等）。
     </设计规范>
 
+    <布局多样性（高优先级）>
+    禁止连续3页使用相同布局。每3-4页必须主动切换版式，参考以下模板轮换：
+    - **左文右图**：左侧文字区 + 右侧图片区（适用于含图的内容页）
+    - **上图下文**：顶部大图 + 下方文字（适用于图片为核心论据的页面）
+    - **居中卡片**：全屏背景 + 居中圆角卡片（适用于总结、核心观点页）
+    - **双栏对比**：左右两列对称布局（适用于对比、分类页面）
+    - **全屏图文**：大图作背景 + 覆盖文字层（适用于封面、分隔页）
+
+    装饰元素同样需要变化：交替使用圆形装饰、圆角矩形卡片、渐变色条、侧边色块等，避免每页都是相同装饰元素。
+    </布局多样性>
+
     <合规示例>
     ✅ `<div class="card"><p>核心数据</p></div>`
     ✅ `<div class="row" style="gap:12px"><span>A</span><span>B</span></div>` (用 gap 替代 span margin)
     ✅ `<div class="badge"><p>标签文本</p></div>` (div 承背景/圆角/padding，p 承文本)
     ❌ `<div class="card">核心数据</div>` (DIV 裸文本，PowerPoint 丢失)
-    ❌ `<p style="border:1px solid #000;">内容</p>` (文本元素带边框)
     ❌ `<p style="background:rgba(0,0,0,0.1)">内容</p>` (文本元素带背景，背景仅 <div> 可用)
     ❌ `<span style="margin-left:8px">文字</span>` (inline 元素加 margin)
     ❌ `<p>• 第一点</p>` (手动 bullet 符号，应用 <ul><li>)
-    ❌ `<div class="badge">标签文本</div>` (DIV 裸文本，即使有背景样式也无效)
-    ❌ `<p class="badge">标签文本</p>` (p 不能有 background/border/radius)
     </合规示例>
+
+    <布局模板参考>
+    以下示例展示合规的不同布局写法，可根据内容特点选用：
+
+    模板A：左文右图
+    ```html
+    <div style="display:flex;gap:32px;padding:48px 64px">
+      <div style="flex:1"><h2>标题</h2><ul><li><p>要点1</p></li></ul></div>
+      <div style="flex:1"><img src="pic.png" style="height:400px;object-fit:contain"></div>
+    </div>
+    ```
+
+    模板B：居中卡片
+    ```html
+    <div style="display:flex;align-items:center;justify-content:center;height:720px">
+      <div class="card" style="width:800px;padding:48px;border-radius:16px">
+        <h2>标题</h2><p>核心内容</p>
+      </div>
+    </div>
+    ```
+
+    模板C：双栏对比
+    ```html
+    <div style="display:flex;gap:32px;padding:48px 64px">
+      <div class="col-a" style="flex:1;border-radius:12px;padding:24px">
+        <h3>类别A</h3><ul><li><p>要点</p></li></ul>
+      </div>
+      <div class="col-b" style="flex:1;border-radius:12px;padding:24px">
+        <h3>类别B</h3><ul><li><p>要点</p></li></ul>
+      </div>
+    </div>
+    ```
+    </布局模板参考>
 
     <自检要点>
     - inline 元素（span/a/strong/em/code）无 margin-left/right，用 gap 替代。

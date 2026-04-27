@@ -61,7 +61,7 @@ class Agent:
         config: DeepPresenterConfig,
         agent_env: AgentEnv,
         workspace: Path,
-        language: Literal["zh", "en"],
+        language: Literal["zh"] = "zh",
         config_file: str | None = None,
         keep_reasoning: bool = True,
         max_turns: int | None = None,
@@ -72,7 +72,7 @@ class Agent:
         self.context_warning = 0
         self.workspace = workspace
         self.agent_env = agent_env
-        self.language = language
+        self.language = "zh"
         self.keep_reasoning = keep_reasoning
         self.context_window = config.context_window
         self.max_context_turns = config.max_context_folds
@@ -94,10 +94,7 @@ class Agent:
         self.llm: LLM = config[self.role_config.use_model]
         self.model = self.llm.model_name
         self._setup_toolset()
-        if language not in self.role_config.system:
-            warning(f"未找到语言 '{language}' 的系统提示词，回退为 'zh'")
-            language = "zh"
-        self.language = language
+        self.language = "zh"
         self.error_history: list[ToolCall | ChatMessage] = []
         self.research_iter = 0
         if config.context_folding:
@@ -425,9 +422,16 @@ class Agent:
         self.chat_history = head + tail + new_tail
 
         # Strip reasoning from older messages to reduce context size.
-        # After compaction, only the most recent reasoning is useful.
-        for msg in self.chat_history[: -len(new_tail)]:
-            if msg.reasoning is not None:
+        # Keep reasoning from the most recent few messages so the model
+        # retains design intent and layout rationale for upcoming slides.
+        reasoning_msgs = [
+            (i, msg)
+            for i, msg in enumerate(self.chat_history[: -len(new_tail)])
+            if msg.reasoning is not None
+        ]
+        # Only strip reasoning beyond the last 3 reasoning-bearing messages
+        if len(reasoning_msgs) > 3:
+            for _, msg in reasoning_msgs[: -3]:
                 msg.reasoning = None
 
     def _compact_completed_slides(self) -> None:
@@ -516,10 +520,12 @@ class Agent:
                     if match:
                         block["text"] = f"Validation PASSED for {match.group(1)}"
 
-        # Strip reasoning from completed slide messages to reduce context
+        # Strip reasoning from completed slide messages to reduce context,
+        # but keep reasoning from the most recent 2 completed-slide messages
+        # so the model retains its design rationale for upcoming slides.
+        completed_reasoning_msgs = []
         for msg in self.chat_history:
             if msg.role == Role.ASSISTANT and msg.reasoning is not None:
-                # Check if this message only involves completed slides
                 if msg.tool_calls:
                     all_completed = True
                     for tc in msg.tool_calls:
@@ -533,7 +539,10 @@ class Agent:
                             all_completed = False
                             break
                     if all_completed:
-                        msg.reasoning = None
+                        completed_reasoning_msgs.append(msg)
+        if len(completed_reasoning_msgs) > 2:
+            for msg in completed_reasoning_msgs[: -2]:
+                msg.reasoning = None
 
         # Compress shared design files (style.css, design_plan.md) once slides
         # are passing validation - these files are stable and on disk.

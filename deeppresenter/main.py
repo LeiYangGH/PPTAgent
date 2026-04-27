@@ -23,10 +23,10 @@ class AgentLoop:
         config: DeepPresenterConfig,
         session_id: str | None = None,
         workspace: Path = None,
-        language: Literal["zh", "en"] = "en",
+        language: Literal["zh"] = "zh",
     ):
         self.config = config
-        self.language = language
+        self.language = "zh"
         if session_id is None:
             session_id = str(uuid.uuid4())[:8]
         self.workspace = workspace or WORKSPACE_BASE / session_id

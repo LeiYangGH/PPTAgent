@@ -42,3 +42,4 @@ dist-ssr
 !.dockerignore
 run-log-result
 diff_output.txt
+suggestions

@@ -322,8 +322,8 @@ def generate(
         typer.Option("--aspect", "-a", help="Aspect ratio (16:9, 4:3, A1, A3, A2, A4)"),
     ] = "16:9",
     language: Annotated[
-        str, typer.Option("--lang", "-l", help="Language (en/zh)")
-    ] = "en",
+        str, typer.Option("--lang", "-l", help="Language")
+    ] = "zh",
     planner: Annotated[
         bool,
         typer.Option(
@@ -371,7 +371,7 @@ def generate(
             config=config,
             session_id=session_id,
             workspace=None,
-            language=language,
+            language="zh",
         )
 
         console.print(
