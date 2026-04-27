@@ -105,7 +105,6 @@ full = [
 
 [project.scripts]
 pptagent = "deeppresenter.cli:main"
-pptagent-mcp = "pptagent.mcp_server:main"
 
 [tool.setuptools]
 include-package-data = true

@@ -12,7 +12,6 @@ from deeppresenter.utils.config import DeepPresenterConfig
 from deeppresenter.utils.constants import WORKSPACE_BASE
 from deeppresenter.utils.log import create_logger
 from deeppresenter.utils.typings import ChatMessage, ConvertType, InputRequest, Role
-from pptagent import PPTAgentServer
 
 config = DeepPresenterConfig.load_from_file()
 timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
@@ -24,14 +23,10 @@ logger = create_logger(
 
 ROLE_EMOJI = {
     Role.SYSTEM: "⚙️",
-    Role.USER: "👤",
-    Role.ASSISTANT: "🤖",
-    Role.TOOL: "📝",
 }
 
 CONVERT_MAPPING = {
-    "自由生成 (freeform)": ConvertType.DEEPPRESENTER,
-    "模版 (templates)": ConvertType.PPTAGENT,
+    "自由生成": ConvertType.DEEPPRESENTER,
 }
 
 
@@ -143,23 +138,6 @@ class ChatDemo:
                             value=list(CONVERT_MAPPING)[0],
                             scale=1,
                         )
-                        template_choices = PPTAgentServer.list_templates()
-                        template_dd = gr.Dropdown(
-                            label="选择模板 (template)",
-                            choices=template_choices + ["auto"],
-                            value="auto",
-                            scale=2,
-                            visible=False,
-                        )
-
-                    def _toggle_template_visibility(v: str) -> dict:
-                        return gr.update(visible=("模版" in v))
-
-                    convert_type_dd.change(
-                        _toggle_template_visibility,
-                        inputs=[convert_type_dd],
-                        outputs=[template_dd],
-                    )
 
                     with gr.Row():
                         msg_input = gr.Textbox(
@@ -201,13 +179,6 @@ class ChatDemo:
                         "completion": getattr(loop.designagent.cost, "completion", 0),
                         "total": getattr(loop.designagent.cost, "total", 0),
                         "model": loop.config.design_agent.model_name,
-                    }
-                elif hasattr(loop, "pptagent") and loop.pptagent:
-                    all_agent_costs["PPT Agent"] = {
-                        "prompt": getattr(loop.pptagent.cost, "prompt", 0),
-                        "completion": getattr(loop.pptagent.cost, "completion", 0),
-                        "total": getattr(loop.pptagent.cost, "total", 0),
-                        "model": loop.config.research_agent.model_name,
                     }
 
                 token_lines = ["## Token 使用统计\n"]
@@ -293,7 +264,6 @@ class ChatDemo:
                 history,
                 attachments,
                 convert_type_value,
-                template_value,
                 num_pages_value,
                 request: gr.Request,
             ):
@@ -326,13 +296,10 @@ class ChatDemo:
                 selected_num_pages = (
                     None if num_pages_value == "auto" else int(num_pages_value)
                 )
-                if template_value == "auto":
-                    template_value = None
 
                 async for yield_msg in loop.run(
                     InputRequest(
                         instruction=message or "请根据上传的附件制作 PPT",
-                        template=template_value,
                         attachments=attachments or [],
                         num_pages=str(selected_num_pages) if selected_num_pages is not None else None,
                         convert_type=selected_convert_type,
@@ -379,7 +346,6 @@ class ChatDemo:
                     chatbot,
                     attachments_input,
                     convert_type_dd,
-                    template_dd,
                     pages_dd,
                 ],
                 outputs=[
@@ -399,7 +365,6 @@ class ChatDemo:
                     chatbot,
                     attachments_input,
                     convert_type_dd,
-                    template_dd,
                     pages_dd,
                 ],
                 outputs=[

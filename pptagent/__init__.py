@@ -12,27 +12,16 @@ __email__ = "wszh712811@gmail.com"
 
 
 # __init__.py
-from .document import Document
-from .llms import LLM, AsyncLLM
-from .mcp_server import PPTAgentServer
+from .llms import AsyncLLM
 from .model_utils import ModelManager
-from .multimodal import ImageLabler
-from .pptgen import PPTAgent
-from .presentation import Presentation
 from .utils import Config, Language
 
 __all__ = [
     "__version__",
     "__author__",
     "__email__",
-    "PPTAgent",
-    "PPTAgentServer",
-    "Document",
-    "Presentation",
     "Config",
     "Language",
     "ModelManager",
-    "ImageLabler",
-    "LLM",
     "AsyncLLM",
 ]

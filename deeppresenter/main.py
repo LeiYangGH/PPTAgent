@@ -8,7 +8,6 @@ from typing import Literal
 from deeppresenter.agents.design import Design
 from deeppresenter.agents.env import AgentEnv
 from deeppresenter.agents.planner import Planner
-from deeppresenter.agents.pptagent import PPTAgent
 from deeppresenter.agents.research import Research
 from deeppresenter.agents.subagent import SubAgent
 from deeppresenter.utils.config import DeepPresenterConfig
@@ -138,67 +137,38 @@ class AgentLoop:
                 self.research_agent.save_history()
                 self.save_results()
 
-            if request.convert_type == ConvertType.PPTAGENT:
-                self.pptagent = PPTAgent(
-                    self.config,
-                    agent_env,
-                    self.workspace,
-                    self.language,
-                )
-                self.agent = self.pptagent
-                try:
-                    async for msg in self.pptagent.loop(request, md_file):
-                        if isinstance(msg, str):
-                            pptx_file = Path(msg)
-                            if not pptx_file.is_absolute():
-                                pptx_file = self.workspace / pptx_file
-                            self.intermediate_output["pptx"] = pptx_file
-                            self.intermediate_output["final"] = pptx_file
-                            msg = str(pptx_file)
-                            break
-                        yield msg
-                except Exception as e:
-                    error_message = (
-                        f"PPTAgent failed with error: {e}\n{traceback.format_exc()}"
-                    )
-                    error(error_message)
-                    raise e
-                finally:
-                    self.pptagent.save_history()
-                    self.save_results()
-            else:
-                self.designagent = Design(
-                    self.config,
-                    agent_env,
-                    self.workspace,
-                    self.language,
-                )
-                self.agent = self.designagent
-                design_interrupted = False
-                try:
-                    async for msg in self.designagent.loop(request, md_file):
-                        if isinstance(msg, str):
-                            slide_html_dir = Path(msg)
-                            if not slide_html_dir.is_absolute():
-                                slide_html_dir = self.workspace / slide_html_dir
-                            self.intermediate_output["slide_html_dir"] = slide_html_dir
-                            break
-                        yield msg
-                except RuntimeError as e:
-                    if "exceeded max turns" in str(e):
-                        warning(f"Design agent exceeded max turns, attempting to convert already-generated slides")
-                        design_interrupted = True
-                    else:
-                        error_message = f"Design agent failed with error: {e}\n{traceback.format_exc()}"
-                        error(error_message)
-                        raise
-                except Exception as e:
+            self.designagent = Design(
+                self.config,
+                agent_env,
+                self.workspace,
+                self.language,
+            )
+            self.agent = self.designagent
+            design_interrupted = False
+            try:
+                async for msg in self.designagent.loop(request, md_file):
+                    if isinstance(msg, str):
+                        slide_html_dir = Path(msg)
+                        if not slide_html_dir.is_absolute():
+                            slide_html_dir = self.workspace / slide_html_dir
+                        self.intermediate_output["slide_html_dir"] = slide_html_dir
+                        break
+                    yield msg
+            except RuntimeError as e:
+                if "exceeded max turns" in str(e):
+                    warning(f"Design agent exceeded max turns, attempting to convert already-generated slides")
+                    design_interrupted = True
+                else:
                     error_message = f"Design agent failed with error: {e}\n{traceback.format_exc()}"
                     error(error_message)
                     raise
-                finally:
-                    self.designagent.save_history()
-                    self.save_results()
+            except Exception as e:
+                error_message = f"Design agent failed with error: {e}\n{traceback.format_exc()}"
+                error(error_message)
+                raise
+            finally:
+                self.designagent.save_history()
+                self.save_results()
 
                 # If Design was interrupted by max_turns, try to salvage existing slides
                 if design_interrupted:

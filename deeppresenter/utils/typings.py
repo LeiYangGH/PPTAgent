@@ -166,8 +166,6 @@ class Cost(BaseModel):
 
 class ConvertType(StrEnum):
     DEEPPRESENTER = "deeppresenter"
-    PPTAGENT = "pptagent"
-    # NANOBANANA = "nanobanana"
 
 
 class PowerPointType(StrEnum):
@@ -183,7 +181,6 @@ class InputRequest(BaseModel):
     instruction: str
     attachments: list[str] = []
     num_pages: str | None = None
-    template: str | None = None
     powerpoint_type: PowerPointType = PowerPointType.WIDE_SCREEN
     convert_type: ConvertType = ConvertType.DEEPPRESENTER
     enable_planner: bool = False
@@ -228,15 +225,6 @@ class InputRequest(BaseModel):
             prompt.append("Number of pages: " + self.num_pages)
         if self.attachments:
             prompt.append("Attachments: " + ", ".join(self.attachments))
-        return "\n".join(prompt)
-
-    @property
-    def pptagent_prompt(self):
-        prompt = [self.instruction]
-        if self.template is not None and self.template not in self.instruction:
-            prompt.append("PPT Template: " + self.template)
-        if self.num_pages is not None and self.num_pages not in self.instruction:
-            prompt.append("Number of pages: " + self.num_pages)
         return "\n".join(prompt)
 
     @property
