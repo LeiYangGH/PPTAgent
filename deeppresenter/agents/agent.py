@@ -43,6 +43,7 @@ from deeppresenter.utils.log import (
     debug,
     info,
     timer,
+    warning,
 )
 from deeppresenter.utils.typings import (
     ChatMessage,
@@ -82,7 +83,7 @@ class Agent:
             else PACKAGE_DIR / "roles" / f"{self.name}.yaml"
         )
         if not config_file.exists():
-            raise FileNotFoundError(f"Cannot found role config file at: {config_file} ")
+            raise FileNotFoundError(f"未找到角色配置文件: {config_file} ")
 
         # Setting basic context
         workspace.mkdir(parents=True, exist_ok=True)
@@ -93,7 +94,9 @@ class Agent:
         self.model = self.llm.model_name
         self._setup_toolset()
         if language not in self.role_config.system:
-            raise ValueError(f"Language '{language}' not found in system prompts")
+            warning(f"未找到语言 '{language}' 的系统提示词，回退为 'zh'")
+            language = "zh"
+        self.language = language
         self.error_history: list[ToolCall | ChatMessage] = []
         self.research_iter = 0
         if config.context_folding:
@@ -130,7 +133,7 @@ class Agent:
         ]
         available_tools = [tool["function"]["name"] for tool in self.tools]
         debug(
-            f"{self.name} Agent got {len(self.tools)} tools: {', '.join(available_tools)}"
+            f"{self.name} 智能体获得 {len(self.tools)} 个工具: {', '.join(available_tools)}"
         )
 
     def _setup_toolset(self):
@@ -139,7 +142,7 @@ class Agent:
             toolset.include_tool_servers = list(self.agent_env._server_tools)
         for server in toolset.include_tool_servers:
             assert server in self.agent_env._server_tools, (
-                f"Server {server} is not available"
+                f"服务器 {server} 不可用"
             )
         self.tools = []
         for server in toolset.include_tool_servers:
@@ -195,14 +198,14 @@ class Agent:
         if self.max_turns is not None:
             if self.turn_count > self.max_turns:
                 raise RuntimeError(
-                    f"{self.name} exceeded max turns: {self.turn_count - 1}/{self.max_turns}"
+                    f"{self.name} 超过最大轮次: {self.turn_count - 1}/{self.max_turns}"
                 )
             remaining = self.max_turns - self.turn_count
             if remaining <= 5 and remaining > 0:
                 self.chat_history[-1].content.append(
                     {
                         "type": "text",
-                        "text": f"<URGENT>You have only {remaining} turn(s) left out of {self.max_turns}. You MUST call `finalize` NOW with whatever you have completed so far. Do NOT start any new tasks or slides.</URGENT>",
+                        "text": f"<URGENT>仅剩 {remaining} 轮（共 {self.max_turns} 轮）。必须立即调用 `finalize` 完成当前任务，不要开始新任务或幻灯片。</URGENT>",
                     }
                 )
 
@@ -228,7 +231,7 @@ class Agent:
                     and self.context_warning == -1
                 ):
                     info(
-                        f"{self.name} context overflow detected, compacting history"
+                        f"{self.name} 上下文溢出检测到，正在压缩历史"
                     )
                     await self.compact_history()
                     response = await self.llm.run(
@@ -280,18 +283,18 @@ class Agent:
             else:
                 try:
                     assert len(tool_calls) <= MAX_TOOLCALL_PER_TURN, (
-                        f"Too many tool calls ({len(tool_calls)}), max allowed is {MAX_TOOLCALL_PER_TURN}"
+                        f"工具调用过多 ({len(tool_calls)})，最多允许 {MAX_TOOLCALL_PER_TURN} 个"
                     )
                     arguments = get_json_from_response(t.function.arguments)
                     if t.function.name == "finalize":
                         arguments["agent_name"] = self.name
                         finish_id = t.id
                         assert "outcome" in arguments, (
-                            "Finalize tool call must have an outcome"
+                            "finalize 工具调用必须包含 outcome"
                         )
                         outcome = arguments["outcome"]
                     assert isinstance(arguments, dict), (
-                        f"Tool call arguments must be a dict or empty, while {arguments} is given"
+                        f"工具调用参数必须是字典或空，但给出了 {arguments}"
                     )
                     t.function.arguments = json.dumps(arguments, ensure_ascii=False)
                 except AssertionError as e:
@@ -303,10 +306,10 @@ class Agent:
                             is_error=True,
                         )
                     )
-                    info(f"Tool call `{t.function}` encountered error: {e}")
+                    info(f"工具调用 `{t.function}` 遇到错误: {e}")
                     continue
             used_tools.add(t.function.name)
-            info(f"{self.name} Agent calling tool `{t.function.name}`")
+            info(f"{self.name} 智能体正在调用工具 `{t.function.name}`")
             coros.append(self.agent_env.tool_execute(t))
 
         observations.extend(await asyncio.gather(*coros))
@@ -339,7 +342,7 @@ class Agent:
         if finish_id is not None:
             for obs in observations:
                 if obs.tool_call_id == finish_id and obs.text == outcome:
-                    info(f"{self.name} Agent finished with result: {obs.text}")
+                    info(f"{self.name} 智能体已完成，结果: {obs.text}")
                     return obs.text
 
         if (
@@ -363,7 +366,7 @@ class Agent:
                 await self.compact_history()
             else:
                 raise RuntimeError(
-                    f"{self.name} agent exceeded context window: {self.context_length}/{self.context_window}"
+                    f"{self.name} 智能体超出上下文窗口: {self.context_length}/{self.context_window}"
                 )
         return observations
 
@@ -403,7 +406,7 @@ class Agent:
             else None,
         )
         debug(
-            f"Summary of Resarch Iter {self.research_iter:02d}: \n"
+            f"研究迭代 {self.research_iter:02d} 的摘要: \n"
             + summary_message.text
         )
         tasks = [
@@ -478,5 +481,5 @@ class Agent:
                     writer.write(msg.model_dump())
 
         debug(
-            f"{self.name} done | cost:{self.cost} ctx:{self.context_length} | history:{history_file.name} config:{config_file.name}"
+            f"{self.name} 完成 | 花费:{self.cost} 上下文:{self.context_length} | 历史:{history_file.name} 配置:{config_file.name}"
         )

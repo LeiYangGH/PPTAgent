@@ -1,28 +1,28 @@
-You are an unbiased presentation analysis judge responsible for evaluating the visual appeal of slides. Please carefully review the provided description of the slide, assessing their aesthetics only, and provide your judgment in a JSON object containing the reason and score. Each score level requires that all evaluation criteria meet the standards of that level.
+你是一位公正的演示文稿评委，负责评估幻灯片的视觉美感。请根据幻灯片描述进行评分，仅关注美学表现，并以 JSON 格式输出理由与分数。
 
-Scoring Criteria (Five-point scale):
+评分标准（1-5 分）：
 
-1 Point (Poor):
-There is a conflict between slide styles, making the content difficult to read.
+1 分（差）：
+风格冲突，内容难以阅读。
 
-2 Points (Fair):
-The slide uses monotonous colors(black and white), ensuring readability while lacking visual appeal.
+2 分（一般）：
+配色单调（仅黑白），能保证阅读但缺乏视觉吸引力。
 
-3 Points (Average):
-The slide employs a basic color scheme; however, it lacks supplementary visual elements such as icons, backgrounds, images, or geometric shapes(like rectangles), making it look plain.
+3 分（普通）：
+采用基本配色方案，但缺乏图标、背景、图片或几何图形（如矩形）等视觉补充，显得平淡。
 
-4 Points (Good):
-The slide uses a harmonious color scheme and contains some visual elements(like icons, backgrounds, images, or geometric shapes); however, minor flaws may exist in the overall design.
+4 分（优）：
+配色和谐，包含图标、背景或几何图形等视觉元素，但整体设计可能存在微小瑕疵。
 
-5 Points (Excellent):
-The style of the slide is harmonious and engaging, the use of supplementary visual elements like images and geometric shapes enhances the slide’s overall visual appeal.
+5 分（卓越）：
+风格和谐且引人入胜，视觉补充元素（图片、几何图形等）运用得当，极具吸引力。
 
-Example Output:
+输出格式：
 {
-  "reason": "xx",
-  "score": int
+  "reason": "评分理由",
+  "score": 分数
 }
 
-Input:
+输入：
 {{descr}}
-Please evaluate the slide step by step, ensuring your judgment strictly adheres to the scoring criteria.
+请逐步评估，严格遵守评分标准。

@@ -1,15 +1,13 @@
-Analyze the content layout and media types in the provided slide images.
-Your objective is to provide a concise, descriptive title that captures purely the layout pattern.
-Requirements:
-Focus on HOW content is structured and presented, not WHAT the content is
-Describe the number, visual arrangement, and interaction between different elements (text, images, diagrams, etc.)
+分析提供幻灯片的布局与媒体类型。
+目标：提供一个简洁、描述性的标题，纯粹捕捉其布局模式。
+要求：
+- 关注内容的结构与呈现方式，而非内容本身。
+- 描述文字、图像、图表等元素的数量、视觉排列及交互关系。
+- 严禁包含具体主题、学科或详细内容描述。
 
-Avoid:
-Specific topics or subjects, and detailed content descriptions
+示例输出：
+- 中央方型图表配解释性段落
+- 图片配三个说明性要点
+- 两张横向图片，下方各配说明文字
 
-Example Outputs:
-One Central Square Chart with a explanatory paragraph
-Picture and three illustrative key points
-Two Landscape Images with Descriptive Text Below Each
-
-Output: Provide a one-line layout pattern description, without line breaks or other formatting.
+输出：提供单行布局模式描述，不含换行符或其他格式。

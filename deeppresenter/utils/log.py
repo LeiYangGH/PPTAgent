@@ -189,48 +189,48 @@ class timer:
 
 
 def logging_openai_exceptions(identifider: str | Any, exc: Exception):
-    """Log OpenAI exceptions"""
+    """记录 OpenAI 异常"""
     if isinstance(exc, RateLimitError):
-        msg = f"RateLimitError (HTTP 429): {str(exc)}"
+        msg = f"速率限制错误 (HTTP 429): {str(exc)}"
     elif isinstance(exc, APITimeoutError):
-        msg = f"APITimeoutError: {str(exc)}"
+        msg = f"API 超时错误: {str(exc)}"
     elif isinstance(exc, APIConnectionError):
-        msg = f"APIConnectionError: {str(exc)}"
+        msg = f"API 连接错误: {str(exc)}"
     elif isinstance(exc, AuthenticationError):
-        msg = f"AuthenticationError (HTTP 401): {str(exc)}"
+        msg = f"认证错误 (HTTP 401): {str(exc)}"
     elif isinstance(exc, PermissionDeniedError):
-        msg = f"PermissionDeniedError (HTTP 403): {str(exc)}"
+        msg = f"权限拒绝错误 (HTTP 403): {str(exc)}"
     elif isinstance(exc, NotFoundError):
-        msg = f"NotFoundError (HTTP 404): {str(exc)}"
+        msg = f"未找到错误 (HTTP 404): {str(exc)}"
     elif isinstance(exc, ConflictError):
-        msg = f"ConflictError (HTTP 409): {str(exc)}"
+        msg = f"冲突错误 (HTTP 409): {str(exc)}"
     elif isinstance(exc, BadRequestError):
-        msg = f"BadRequestError (HTTP 400): {str(exc)}"
+        msg = f"错误请求 (HTTP 400): {str(exc)}"
     elif isinstance(exc, UnprocessableEntityError):
-        msg = f"UnprocessableEntityError (HTTP 422): {str(exc)}"
+        msg = f"无法处理实体错误 (HTTP 422): {str(exc)}"
     elif isinstance(exc, InternalServerError):
-        msg = f"InternalServerError (HTTP 500): {str(exc)}"
+        msg = f"内部服务器错误 (HTTP 500): {str(exc)}"
     elif isinstance(exc, APIStatusError):
         code = getattr(exc, "status_code", "unknown")
-        msg = f"APIStatusError (HTTP {code}): {str(exc)}"
+        msg = f"API 状态错误 (HTTP {code}): {str(exc)}"
     elif isinstance(exc, APIError):
-        msg = f"APIError: {str(exc)}"
+        msg = f"API 错误: {str(exc)}"
     elif isinstance(exc, APIResponseValidationError):
-        msg = f"APIResponseValidationError: {str(exc)}"
+        msg = f"API 响应验证错误: {str(exc)}"
     elif isinstance(exc, InvalidWebhookSignatureError):
-        msg = f"InvalidWebhookSignatureError: {str(exc)}"
+        msg = f"无效 Webhook 签名错误: {str(exc)}"
     elif isinstance(exc, ContentFilterFinishReasonError):
-        msg = f"ContentFilterFinishReasonError: {str(exc)}"
+        msg = f"内容过滤完成原因错误: {str(exc)}"
     elif isinstance(exc, LengthFinishReasonError):
-        msg = f"LengthFinishReasonError: {str(exc)}"
+        msg = f"长度完成原因错误: {str(exc)}"
     elif isinstance(exc, OpenAIError):
-        msg = f"OpenAIError: {str(exc)}"
+        msg = f"OpenAI 错误: {str(exc)}"
     elif isinstance(exc, ValidationError):
-        msg = f"Pydantic ValidationError: {str(exc)}"
+        msg = f"Pydantic 验证错误: {str(exc)}"
     elif hasattr(exc, "http_status"):
-        msg = f"OpenAI API Error {exc.http_status}: {str(exc)}"
+        msg = f"OpenAI API 错误 {exc.http_status}: {str(exc)}"
     else:
-        msg = f"Exception: {str(exc)}\n{traceback.format_exc()}"
+        msg = f"异常: {str(exc)}\n{traceback.format_exc()}"
 
-    warning(f"{identifider} encountered {msg}")
+    warning(f"{identifider} 遇到 {msg}")
     return msg

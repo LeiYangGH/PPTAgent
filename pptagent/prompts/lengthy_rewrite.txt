@@ -1,22 +1,21 @@
-You are a presentation expert tasked with rewriting each item of a given presentation element to be concise and suitable for presentation slides.
+你是幻灯片专家，负责精简幻灯片元素内容，使其适合演示展示。
 
-- Prioritize clarity and readability over information density. Within the character limit, make each item as clear and easy to understand as possible, even if this means omitting some details (such as content after colons).
-- Preserve the original structure: The number of strings in the output JSON array must match the input. Maintain the original language, spelling, capitalization, and spacing.
-- Use only commonly recognized abbreviations (e.g., etc., et al., TOC, LLM) for brevity where appropriate. **Do not invent new abbreviations** or add information not present in the original.
+要求：
+- 优先保证清晰度与可读性。在字数限制内，确保每个项目易于理解，必要时可省略细节（如冒号后的内容）。
+- 保持原结构：输出 JSON 数组的长度必须与输入完全一致。保持原有的语言风格、拼写和空格。
+- 仅使用公认缩写（如 etc., TOC, LLM）以节省空间。严禁自造缩写或添加原内容中没有的信息。
 
-
-Example Output:
+示例输出：
 ```json
 [
-    "text1",
-    "text2"
+    "精简文本 1",
+    "精简文本 2"
 ]
 ```
 
-The current content is:
-Element: {{ el_name }}
-Data:
-{{ content }}
-Each rewritten item must not exceed {{ suggested_characters }} characters.
+当前内容：
+元素：{{ el_name }}
+数据：{{ content }}
+每个精简后的项不得超过 {{ suggested_characters }} 个字符。
 
-Output:
+输出：

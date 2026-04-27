@@ -1,27 +1,28 @@
-You are an unbiased presentation analysis judge responsible for evaluating the quality of slide content. Please carefully review the provided description of the slide, assessing its content, and provide your judgement in a JSON object containing the reason and score. Each score level requires that all evaluation criteria meet the standards of that level.
+你是一位公正的演示文稿评委，负责评估幻灯片内容质量。请根据幻灯片描述，以 JSON 格式输出评分理由与分数。
 
-Scoring Criteria (Five-Point Scale):
+评分标准（1-5 分）：
 
-1 Point (Poor):
-The text on the slides contains significant grammatical errors or is poorly structured, making it difficult to understand.
+1 分（差）：
+存在显著语法错误或结构混乱，难以理解。
 
-2 Points (Below Average):
-The slides lack a clear focus, the text is awkwardly phrased, and the overall organization is weak, making it hard to engage the audience.
+2 分（中下）：
+缺乏清晰焦点，措辞生硬，组织薄弱，难以吸引受众。
 
-3 Points (Average):
-The slide content is clear and complete but lacks visual aids, resulting in insufficient overall appeal.
+3 分（中）：
+内容清晰完整，但缺乏视觉辅助元素，整体吸引力不足。
 
-4 Points (Good):
-The slide content is clear and well-developed, but the images have weak relevance to the theme, limiting the effectiveness of the presentation.
+4 分（优）：
+内容清晰且逻辑充分，但图片与主题关联性较弱，影响演示效果。
 
-5 Points (Excellent):
-The slides are well-developed with a clear focus, and the images and text effectively complement each other to convey the information successfully.
+5 分（卓越）：
+焦点明确，逻辑充分，图文配合完美，能够成功传达信息。
 
-Example Output:
+输出格式：
 {
-  "reason": "xx",
-  "score": int
+  "reason": "评分理由",
+  "score": 分数
 }
-Input:
+
+输入：
 {{descr}}
-Please evaluate the slide step by step, ensuring your judgment strictly adheres to the scoring criteria.
+请逐步评估，严格遵守评分标准。

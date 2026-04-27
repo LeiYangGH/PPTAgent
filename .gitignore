@@ -41,3 +41,4 @@ dist-ssr
 !.vscode/extensions.json
 !.dockerignore
 run-log-result
+diff_output.txt

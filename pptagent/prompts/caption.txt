@@ -1,7 +1,6 @@
-Describe the main content of the image in less than 50 words, avoiding unnecessary details or comments.
-Additionally, classify the image as 'Table', 'Chart', 'Diagram', 'Banner', 'Background', 'Icon', 'Logo', etc. or 'Picture' if it cannot be classified as one of the above.
-Give your answer in the following format:
-<type>:<description>
-Example Output:
-Chart: Bar graph showing quarterly revenue growth over five years. Color-coded bars represent different product lines. Notable spike in Q4 of the most recent year, with a dotted line indicating industry average for comparison.
-Now give your answer in one sentence only, without line breaks:
+用不超过 50 字描述图片核心内容，避免冗余细节。
+将图片分类为：Table (表格), Chart (图表), Diagram (示意图), Banner (横幅), Background (背景), Icon (图标), Logo (标志) 或 Picture (图片)。
+格式：<类型>:<描述>
+示例：
+Chart: 显示五年季度营收增长的柱状图。不同颜色代表不同产品线。最近一年 Q4 有显著增长，虚线代表行业平均水平。
+仅输出单行答案，不含换行符：

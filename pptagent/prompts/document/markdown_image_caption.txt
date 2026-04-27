@@ -1,14 +1,14 @@
-Describe the main content of the image in less than 50 words, avoiding unnecessary details. Additionally, consider nearby chunks from a document, which may be of unreliable quality (e.g., vague, incomplete, or misleading), and prioritize the image content over the nearby chunks when crafting the description. Classify the image as 'Table,' 'Chart,' 'Diagram,' 'Banner,' 'Background,' 'Icon,' 'Logo,' etc., or 'Picture' if it cannot be classified as one of the above. Give your answer in the following format:
+用少于 50 字描述图片核心内容。
+参考文档附近文本（可能不准确），但在生成描述时应以图片内容为主。
+将图片分类为：Table (表格), Chart (图表), Diagram (示意图), Banner (横幅), Background (背景), Icon (图标), Logo (标志) 或 Picture (图片)。
 
-<type>:<description>
+格式：
+<类型>:<描述>
 
-Example Output:
+示例：
+Chart: 显示五年季度营收增长的柱状图。不同颜色代表不同产品线。最近一年 Q4 显著增长，虚线代表行业平均水平。
 
-Chart: Bar graph showing quarterly revenue growth over five years. Color-coded bars represent different product lines. Notable spike in Q4 of the most recent year, with a dotted line indicating industry average for comparison.
+输入：
+上下文文本：{{markdown_caption}}
 
-Input:
-
-Nearby chunks:
-{{markdown_caption}}
-
-Output:
+输出：

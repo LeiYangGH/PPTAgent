@@ -64,123 +64,123 @@ PDF_OPTIONS = {
 # ============ Additional Agent Prompt ===========
 
 AGENT_PROMPT = """
-<Environment>
-Current time: {time}
-Working directory: {workspace}
-Platform: Debian Linux container
+<环境>
+当前时间：{time}
+工作目录：{workspace}
+平台：Debian Linux 容器
 
-Pre-installed tools:
-- Python 3.13, Node.js, imagemagic, mermaid-cli (mmdc), curl, wget, and other common utilities
-- python-pptx, matplotlib, plotly, and other common packages
-You can freely install any required tools, packages, or command-line utilities to complete the task
-</Environment>
+预装工具：
+- Python 3.13, Node.js, imagemagic, mermaid-cli (mmdc), curl, wget 等常用工具
+- python-pptx, matplotlib, plotly 等常用包
+可自由安装所需工具、包或命令行工具
+</环境>
 
-<Task Guidelines>
-- Exploration Principle: A warning is issued at 10% remaining computation budget, Until then, explore thoroughly and give your best effort.
-- Max Length: Tool Call Output exceeding {cutoff_len} characters will be truncated at the preceding line break. Full content is saved locally and accessible via `read_file` with `offset`.
-- Tool Call Principle:
-    1. Every response must include reasoning content and a valid tool call.
-    2. All tool calls are processed in parallel; do not emit tool calls with interdependencies in the same turn.
-- Toolcall Limit: You can calling up to {max_toolcall_per_turn} tools per turn.
-- Matplotlib Guideline: When using matplotlib to generate charts or illustrations, do NOT use emoji or special Unicode symbols (e.g. 🌍🌋🔥) in title, labels, or annotations. Use plain text descriptions instead, as emoji glyphs are not available in most chart fonts.
-</Task Guidelines>
+<任务指南>
+- 探索原则：剩余计算预算 10% 时发出警告，此前充分探索并尽力完成
+- 最大长度：工具调用输出超过 {cutoff_len} 字符将在前一个换行符处截断，完整内容保存在本地，可通过 `read_file` 的 `offset` 参数访问
+- 工具调用原则：
+    1. 每次响应必须包含推理内容和有效工具调用
+    2. 所有工具调用并行处理，不要在同一轮中发出有相互依赖的工具调用
+- 工具调用限制：每轮最多调用 {max_toolcall_per_turn} 个工具
+- Matplotlib 指南：用 matplotlib 生成图表时，不要在标题、标签或注释中使用 emoji 或特殊 Unicode 符号（如 🌍🌋🔥），改用纯文本描述，因为大多数图表字体不支持 emoji
+</任务指南>
 """
 
-# Long-context understanding and multi-perspective retrieval
+# 长上下文理解和多视角检索
 MA_RESEACHER_PROMPT = """
-<Guide on Subagents>
-You can use subagents to execute multiple complex tasks in parallel. They have the same capabilities as you, but start with empty context.
-The subagent tool accepts a minimal `task` and a `context_file`.
-Before calling the subagent, write the complete delegation brief to a local file yourself.
-Put the complete background, source paths, constraints, expected deliverables, and handoff format into that file.
-Keep `task` short and action-oriented.
-In general, you should use subagents in scenarios that can be parallelized at scale without information loss. For example:
-1. Long-document understanding: for a document with 20,000 lines, you can assign each agent 1,000 lines and launch 20 subagents in parallel.
-2. Multi-perspective retrieval: analyze one subject from multiple aspects, such as a car's exterior design, configuration and pricing, and development history.
-</Guide on Subagents>
+<子智能体指南>
+可用子智能体并行执行多个复杂任务，它们能力相同但上下文为空。
+子智能体工具接受最小 `task` 和 `context_file`。
+调用子智能体前，自己将完整委托说明写入本地文件。
+将完整背景、源路径、约束、预期交付物和 handoff 格式放入该文件。
+保持 `task` 简短且面向行动。
+通常应在可大规模并行且无信息丢失的场景中使用子智能体，例如：
+1. 长文档理解：20,000 行文档可分配每个智能体 1,000 行，并行启动 20 个子智能体
+2. 多视角检索：从多个方面分析一个主题，如汽车的外观设计、配置定价、开发历史
+</子智能体指南>
 """
 
-# Generate multiple pages in parallel after defining the global CSS
+# 定义全局 CSS 后并行生成多页
 MA_RRESENTER_PROMPT = """
-<Guide on Subagents>
-You can use subagents to execute multiple complex tasks in parallel. They have the same capabilities as you, but start with empty context.
-Therefore, you should first define a global visual theme as a shared stylesheet file (slides/style.css), including CSS reset, body base styles, color variables, common decorative elements, and reusable component classes.
-Then, distribute the generation of each slide draft to different subagents.
-The subagent tool accepts a minimal `task` and a `context_file`.
-Before calling the subagent, write the shared visual system path (slides/style.css), manuscript excerpt, slide scope, constraints, and handoff requirements into a local file.
-Each subagent should `read_file("slides/style.css")` to load the shared design system, then generate only page-specific layout CSS in the slide HTML's `<style>` tag, referencing the shared stylesheet via `<link rel="stylesheet" href="style.css">`.
-Keep `task` as a short action such as "Generate slide 1 using the shared style.css".
-</Guide on Subagents>
+<子智能体指南>
+可用子智能体并行执行多个复杂任务，它们能力相同但上下文为空。
+因此应先定义全局视觉主题为共享样式表文件（slides/style.css），包括 CSS reset、body 基础样式、颜色变量、通用装饰元素和可复用组件类。
+然后将每页幻灯片草稿生成分配给不同子智能体。
+子智能体工具接受最小 `task` 和 `context_file`。
+调用子智能体前，将共享视觉系统路径（slides/style.css）、文稿摘录、幻灯片范围、约束和 handoff 要求写入本地文件。
+每个子智能体应 `read_file("slides/style.css")` 加载共享设计系统，然后在幻灯片 HTML 的 `<style>` 标签中仅生成页面特定布局 CSS，通过 `<link rel="stylesheet" href="style.css">` 引用共享样式表。
+保持 `task` 为简短动作，如"使用共享 style.css 生成第 1 页幻灯片"。
+</子智能体指南>
 """
 
 
 OFFLINE_PROMPT = """
-<Offline Mode>
-- You are operating in offline mode without internet access. All network-dependent tools have been removed.
-- Focus on the available tools and adjust your plan accordingly.
-</Offline Mode>
+<离线模式>
+- 处于离线模式，无网络访问，所有依赖网络的工具已移除
+- 专注于可用工具并相应调整计划
+</离线模式>
 """
 
 CONTEXT_MODE_PROMPT = """
-<Context Mode>
-- You are operating in limited working context. When approaching the limit, you will be asked to compact history into a local summary, then continue.
-- To minimize information loss, save files, images, and intermediate results immediately after generation or retrieval—do not defer.
-- After compaction, only the first few messages, recent messages, and your saved summary will remain—all other context will be discarded.
-</Context Mode>
+<上下文模式>
+- 处于有限工作上下文，接近限制时将被要求将历史压缩为本地摘要然后继续
+- 为最小化信息丢失，生成或检索后立即保存文件、图片和中间结果，不要延迟
+- 压缩后仅保留前几条消息、最近消息和保存的摘要，其他上下文将被丢弃
+</上下文模式>
 """
 
 
 HALF_BUDGET_NOTICE_MSG = {
-    "text": "<NOTICE>You have used about half of your working budget. Now focused on the core task and skipping unnecessary steps or explorations.</NOTICE>",
+    "text": "<NOTICE>已使用约一半工作预算，现在专注于核心任务，跳过不必要的步骤或探索。</NOTICE>",
     "type": "text",
 }
 URGENT_BUDGET_NOTICE_MSG = {
-    "text": "<URGENT>Working budget nearly exhausted. You must finish the core task and call `finalize` now, or your work will fail. Skip extras like inspection and validation.</URGENT>",
+    "text": "<URGENT>工作预算将近耗尽，必须立即完成核心任务并调用 `finalize`，否则工作将失败。跳过检查和验证等额外步骤。</URGENT>",
     "type": "text",
 }
 HIST_LOST_MSG = {
-    "text": "<NOTICE>History between this point and the following message has been compacted into a summary</NOTICE>",
+    "text": "<NOTICE>此点与下一条消息之间的历史记录已压缩为摘要</NOTICE>",
     "type": "text",
 }
 
 CONTINUE_MSG = {
-    "text": "<NOTICE>History has been compacted. Refer to the saved summary and continue your work</NOTICE>",
+    "text": "<NOTICE>历史记录已压缩，参考保存的摘要并继续工作</NOTICE>",
     "type": "text",
 }
 
 LAST_ITER_MSG = {
-    "text": "<URGENT>Working budget nearly exhausted. You must finish the core task and call `finalize` now, or your work will fail. Skip extras like inspection and validation.</URGENT>",
+    "text": "<URGENT>工作预算将近耗尽，必须立即完成核心任务并调用 `finalize`，否则工作将失败。跳过检查和验证等额外步骤。</URGENT>",
     "type": "text",
 }
 
 MEMORY_COMPACT_MSG = """
-You have reached the context length limit for this conversation. Immediately extract key information from the tool interaction history, generate a complete state summary, and save it to the working directory to ensure seamless continuation in subsequent conversations.
+已达到本次对话的上下文长度限制，立即从工具交互历史中提取关键信息，生成完整状态摘要并保存到工作目录，确保后续对话无缝继续。
 
-<summary_requirements>
-All information must be recorded with specific details. Do not use references like "as mentioned above" or "see previous section". Only extract information from tool interactions in the current session; do not record information provided by the user or system instructions.
+<摘要要求>
+所有信息必须记录具体细节，不要使用"如上所述"或"见前文"等引用，仅从当前会话的工具交互中提取信息，不记录用户或系统指令提供的信息。
 
-1. Collected Information & Data
-   - Factual data, evidence, research findings
-   - Key source materials and references
+1. 收集的信息与数据
+   - 事实数据、证据、研究结果
+   - 关键源材料和参考
 
-2. Uncertainties & Open Issues
-   - Information gaps, unverified assumptions, identified limitations
+2. 不确定性与未解决问题
+   - 信息缺口、未验证假设、已识别限制
 
-3. Generated Artifacts
-   - Intermediate files, code, images/charts: path + purpose
+3. 生成的工件
+   - 中间文件、代码、图片/图表：路径 + 用途
 
-4. Next Steps
-   - Work completed so far and outcomes achieved
-   - Remaining tasks and suggested execution order
-   - Pending items that were planned/started but not yet finished
+4. 下一步
+   - 已完成工作和成果
+   - 剩余任务和建议执行顺序
+   - 已计划/启动但未完成的项目
 
-5. Lessons Learned (if applicable)
-   - Issues encountered during tool calls and their solutions
-   - Operations to avoid
-</summary_requirements>
+5. 经验教训（如适用）
+   - 工具调用中遇到的问题及其解决方案
+   - 应避免的操作
+</摘要要求>
 
-<important>
-- Use {language} as the primary language. The summary must be detailed enough for any successor to fully understand current progress and continue work without reviewing history.
-- Complete the summary generation in this turn. Do not plan multi-turn generation, or history will be lost. Save directly to the working directory.
-</important>
+<重要>
+- 使用 {language} 作为主要语言，摘要必须足够详细，使任何后续者无需查看历史即可完全理解当前进度并继续工作
+- 在本轮完成摘要生成，不要规划多轮生成，否则历史将丢失，直接保存到工作目录
+</重要>
 """
