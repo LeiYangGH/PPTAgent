@@ -8,6 +8,11 @@ services:
         http_proxy: ${http_proxy:-}
         https_proxy: ${https_proxy:-}
         no_proxy: ${no_proxy:-}
+      # Persist uv/pip/npm download caches on the host so rebuilds skip re-downloading
+      cache_from:
+        - deeppresenter-host
+      extra_hosts:
+        - "host.docker.internal=host-gateway"
     image: deeppresenter-host
     container_name: deeppresenter-host
     ports:

@@ -17,6 +17,9 @@ from PIL import Image
 from playwright.async_api import TimeoutError
 from trafilatura import extract
 
+from datetime import datetime, timezone
+from urllib.parse import urlparse
+
 from deeppresenter.utils.constants import (
     DOWNLOAD_CACHE,
     MAX_RETRY_INTERVAL,
@@ -31,6 +34,85 @@ mcp = FastMCP(name="Search")
 FAKE_UA = UserAgent()
 
 _DOWNLOAD_INDEX_PATH = DOWNLOAD_CACHE / ".index.json"
+_DOMAIN_BLACKLIST_PATH = DOWNLOAD_CACHE / ".domain_blacklist.json"
+_AUTO_BLACKLIST_THRESHOLD = 3
+
+
+def _extract_domain(url: str) -> str:
+    """Extract the registered domain from a URL (e.g. 'en.wikipedia.org')."""
+    try:
+        parsed = urlparse(url)
+        return parsed.hostname or ""
+    except Exception:
+        return ""
+
+
+def _load_domain_blacklist() -> dict[str, dict]:
+    """Load the domain blacklist.
+
+    Returns a dict mapping domain names to entries:
+        {"en.wikipedia.org": {"fail_count": 5, "blacklisted": true, "reason": "timeout", "last_fail": "..."}}
+    """
+    if _DOMAIN_BLACKLIST_PATH.exists():
+        try:
+            with open(_DOMAIN_BLACKLIST_PATH, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def _save_domain_blacklist(blacklist: dict[str, dict]) -> None:
+    """Save the domain blacklist atomically."""
+    DOWNLOAD_CACHE.mkdir(parents=True, exist_ok=True)
+    tmp = _DOMAIN_BLACKLIST_PATH.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(blacklist, f, ensure_ascii=False, indent=2)
+    tmp.replace(_DOMAIN_BLACKLIST_PATH)
+
+
+def _is_domain_blacklisted(domain: str) -> tuple[bool, str]:
+    """Check if a domain is blacklisted.
+
+    Returns (is_blacklisted, reason).
+    """
+    if not domain:
+        return False, ""
+    blacklist = _load_domain_blacklist()
+    entry = blacklist.get(domain)
+    if entry and entry.get("blacklisted"):
+        return True, entry.get("reason", "unknown")
+    return False, ""
+
+
+def _record_domain_failure(domain: str, reason: str = "") -> None:
+    """Record a download failure for a domain. Auto-blacklist after threshold."""
+    if not domain:
+        return
+    blacklist = _load_domain_blacklist()
+    entry = blacklist.get(domain, {"fail_count": 0, "blacklisted": False, "reason": ""})
+    entry["fail_count"] = entry.get("fail_count", 0) + 1
+    entry["last_fail"] = datetime.now(timezone.utc).isoformat()
+    if reason:
+        entry["reason"] = reason
+    if entry["fail_count"] >= _AUTO_BLACKLIST_THRESHOLD and not entry.get("blacklisted"):
+        entry["blacklisted"] = True
+        debug(f"Domain auto-blacklisted: {domain} (fail_count={entry['fail_count']}, reason={reason})")
+    blacklist[domain] = entry
+    _save_domain_blacklist(blacklist)
+
+
+def _record_domain_success(domain: str) -> None:
+    """Reset the failure counter for a domain after a successful download."""
+    if not domain:
+        return
+    blacklist = _load_domain_blacklist()
+    entry = blacklist.get(domain)
+    if entry and not entry.get("blacklisted"):
+        # Only reset fail_count for non-blacklisted domains
+        entry["fail_count"] = 0
+        blacklist[domain] = entry
+        _save_domain_blacklist(blacklist)
 
 
 def _load_download_index() -> dict[str, dict]:
@@ -284,6 +366,12 @@ async def fetch_url(url: str, body_only: bool = True) -> str:
         body_only: If True, return only main content; otherwise return full page, default True
     """
 
+    # ── Check domain blacklist ────────────────────────────────────────────
+    domain = _extract_domain(url)
+    is_blocked, block_reason = _is_domain_blacklisted(domain)
+    if is_blocked:
+        return f"Skipped: domain '{domain}' is blacklisted (reason: {block_reason}). Use manage_domain_blacklist to unblock if needed."
+
     async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
         try:
             resp = await client.head(url)
@@ -349,7 +437,8 @@ async def download_file(url: str, output_file: str) -> str:
     Download a file from a URL and save it to a local path.
 
     If the same URL has been downloaded before, the cached copy is reused
-    automatically to avoid redundant network requests.
+    automatically to avoid redundant network requests. Domains that have
+    failed repeatedly are automatically skipped (see manage_domain_blacklist).
     """
 
     async def _fetch_bytes(target_url: str) -> bytes:
@@ -372,6 +461,12 @@ async def download_file(url: str, output_file: str) -> str:
     suffix = Path(output_path).suffix.lower()
     ext_format_map = Image.registered_extensions()
 
+    # ── Check domain blacklist ────────────────────────────────────────────
+    domain = _extract_domain(url)
+    is_blocked, block_reason = _is_domain_blacklisted(domain)
+    if is_blocked:
+        return f"Skipped: domain '{domain}' is blacklisted (reason: {block_reason}). Use manage_domain_blacklist to unblock if needed."
+
     # ── Check global download cache first ────────────────────────────────
     index = _load_download_index()
     url_h = _url_hash(url)
@@ -381,7 +476,7 @@ async def download_file(url: str, output_file: str) -> str:
         if cached_file.exists() and cached_file.stat().st_size > 0:
             try:
                 shutil.copy2(cached_file, output_path)
-                # If the cached file is an image, report its resolution
+                _record_domain_success(domain)
                 try:
                     with Image.open(output_path) as img:
                         width, height = img.size
@@ -395,6 +490,7 @@ async def download_file(url: str, output_file: str) -> str:
                 warning(f"Cache copy failed for {url}: {e}, falling back to download")
 
     # ── Download and write to both workspace and cache ───────────────────
+    last_error = ""
     for retry in range(3):
         try:
             await asyncio.sleep(retry)
@@ -420,6 +516,7 @@ async def download_file(url: str, output_file: str) -> str:
                         "size": cache_path.stat().st_size,
                     }
                     _save_download_index(index)
+                    _record_domain_success(domain)
                     return f"File downloaded to {output_path} (resolution: {width}x{height}){note}"
             except Exception:
                 with open(output_path, "wb") as f:
@@ -434,11 +531,27 @@ async def download_file(url: str, output_file: str) -> str:
                     "size": cache_path.stat().st_size,
                 }
                 _save_download_index(index)
+                _record_domain_success(domain)
             break
-        except Exception:
-            pass
+        except Exception as e:
+            last_error = str(e)
+            # Classify failure reason
+            err_lower = last_error.lower()
+            if "timeout" in err_lower or "timed out" in err_lower:
+                fail_reason = "timeout"
+            elif "403" in err_lower or "forbidden" in err_lower:
+                fail_reason = "access_denied"
+            elif "401" in err_lower or "unauthorized" in err_lower:
+                fail_reason = "auth_required"
+            elif "404" in err_lower or "not found" in err_lower:
+                fail_reason = "not_found"
+            elif "connect" in err_lower or "connection" in err_lower:
+                fail_reason = "connection_failed"
+            else:
+                fail_reason = "download_error"
+            _record_domain_failure(domain, fail_reason)
     else:
-        return f"Failed to download file from {url}"
+        return f"Failed to download file from {url} (domain: {domain}, error: {last_error}). Domain recorded for blacklist tracking."
 
     return f"File downloaded to {output_path}"
 
@@ -489,6 +602,94 @@ def list_download_cache(keyword: str = "") -> dict:
                 "size": f.stat().st_size,
             })
     return {"total": len(results), "files": results}
+
+
+@mcp.tool()
+def manage_domain_blacklist(
+    action: Literal["list", "add", "remove", "clear"],
+    domain: str = "",
+    reason: str = "",
+) -> dict:
+    """
+    Manage the domain blacklist for downloads and URL fetching.
+
+    Domains are auto-blacklisted after 3 consecutive download failures.
+    Use this tool to view, manually add, remove, or clear the blacklist.
+
+    Args:
+        action: One of "list", "add", "remove", "clear".
+        domain: Domain name (required for "add" and "remove"), e.g. "en.wikipedia.org".
+        reason: Optional reason for manual blacklisting (used with "add").
+
+    Returns:
+        dict: with fields:
+            - action: the action performed
+            - blacklisted_domains: list of current blacklist entries (for "list" and "clear")
+            - message: status message
+    """
+    blacklist = _load_domain_blacklist()
+
+    if action == "list":
+        entries = [
+            {
+                "domain": d,
+                "fail_count": e.get("fail_count", 0),
+                "blacklisted": e.get("blacklisted", False),
+                "reason": e.get("reason", ""),
+                "last_fail": e.get("last_fail", ""),
+            }
+            for d, e in sorted(blacklist.items())
+        ]
+        return {
+            "action": "list",
+            "blacklisted_domains": entries,
+            "message": f"{len(entries)} domains tracked, {sum(1 for e in entries if e['blacklisted'])} blacklisted",
+        }
+
+    elif action == "add":
+        if not domain:
+            return {"action": "add", "blacklisted_domains": [], "message": "domain is required for add action"}
+        blacklist[domain] = {
+            "fail_count": blacklist.get(domain, {}).get("fail_count", 0),
+            "blacklisted": True,
+            "reason": reason or "manually added",
+            "last_fail": datetime.now(timezone.utc).isoformat(),
+        }
+        _save_domain_blacklist(blacklist)
+        return {
+            "action": "add",
+            "blacklisted_domains": [{"domain": domain, **blacklist[domain]}],
+            "message": f"Domain '{domain}' added to blacklist (reason: {reason or 'manually added'})",
+        }
+
+    elif action == "remove":
+        if not domain:
+            return {"action": "remove", "blacklisted_domains": [], "message": "domain is required for remove action"}
+        if domain in blacklist:
+            del blacklist[domain]
+            _save_domain_blacklist(blacklist)
+            return {
+                "action": "remove",
+                "blacklisted_domains": [],
+                "message": f"Domain '{domain}' removed from blacklist",
+            }
+        return {
+            "action": "remove",
+            "blacklisted_domains": [],
+            "message": f"Domain '{domain}' was not in blacklist",
+        }
+
+    elif action == "clear":
+        count = len(blacklist)
+        blacklist.clear()
+        _save_domain_blacklist(blacklist)
+        return {
+            "action": "clear",
+            "blacklisted_domains": [],
+            "message": f"Cleared {count} domains from blacklist",
+        }
+
+    return {"action": action, "blacklisted_domains": [], "message": f"Unknown action: {action}"}
 
 
 if __name__ == "__main__":

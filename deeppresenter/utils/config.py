@@ -128,7 +128,7 @@ class Endpoint(BaseModel):
         if response_format is not None:
             message.content = response_format(
                 **get_json_from_response(message.content)
-            ).model_dump_json(indent=2)
+            ).model_dump_json(indent=2, ensure_ascii=False)
         assert tools is None or len(message.tool_calls or []), (
             f"No tool call returned from the model, got {message}"
         )

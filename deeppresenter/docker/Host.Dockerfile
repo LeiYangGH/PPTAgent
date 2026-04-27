@@ -1,3 +1,6 @@
+# syntax=docker/dockerfile:1
+# 使用 BuildKit 缓存挂载，避免重复下载二进制文件
+
 # 使用镜像源加速基础镜像拉取
 FROM docker.1ms.run/node:lts-bookworm-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
@@ -68,7 +71,8 @@ RUN npm config set registry https://registry.npmmirror.com
 # Use npmmirror for Playwright browser downloads (China)
 ENV PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright
 
-RUN npm install --prefix deeppresenter/html2pptx --ignore-scripts && \
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm install --prefix deeppresenter/html2pptx --ignore-scripts && \
     npm exec --prefix deeppresenter/html2pptx playwright install chromium && \
     npm install --prefix /root/.cache/deeppresenter/html2pptx fast-glob minimist pptxgenjs playwright sharp
 
@@ -80,14 +84,18 @@ ENV PATH="/opt/.venv/bin:${PATH}" \
 
 # Create Python virtual environment and install packages
 # Configure uv to use Tsinghua PyPI mirror for China
-RUN uv venv --python 3.13 $VIRTUAL_ENV && \
+RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
+    --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    uv venv --python 3.13 $VIRTUAL_ENV && \
     uv pip install -i https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple -e .
 
 # Install Python Playwright browser binaries used by deeppresenter runtime.
 # NOTE: Unset PLAYWRIGHT_DOWNLOAD_HOST because npmmirror may not have
 # the latest Python playwright browser build; fall back to official CDN.
-RUN unset PLAYWRIGHT_DOWNLOAD_HOST && /opt/.venv/bin/playwright install chromium
-RUN modelscope download --model forceless/fasttext-language-id
+RUN --mount=type=cache,target=/root/.cache/ms-playwright,sharing=locked \
+    unset PLAYWRIGHT_DOWNLOAD_HOST && /opt/.venv/bin/playwright install chromium
+RUN --mount=type=cache,target=/root/.cache/modelscope,sharing=locked \
+    modelscope download --model forceless/fasttext-language-id
 
 # Install LibreOffice for PPT preview conversion and poppler-utils for PDF processing
 RUN apt-get update && \

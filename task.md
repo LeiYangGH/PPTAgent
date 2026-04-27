@@ -21,7 +21,7 @@ ghcr.io/presenton/presenton:latest                      c80ed6bb29b9       18.5G
 
 我先运行了本地llm
 ```
-llama-server -m  "D:\models\Qwen3.6-35B-A3B-GGUF\Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf" --port 8989
+llama-server -m  "D:\models\Qwen3.6-35B-A3B-GGUF\Qwen3.6-35B-A3B-UD-Q4_K_S.gguf" --port 8989
 ```
 
 也运行了docker compose up -d --force-recreate

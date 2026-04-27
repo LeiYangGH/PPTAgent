@@ -107,7 +107,7 @@ class ChatMessage(BaseModel):
             elif block["type"] == "image_url":
                 texts.append("<image>")
 
-        texts.extend([t.function.model_dump_json() for t in self.tool_calls or []])
+        texts.extend([t.function.model_dump_json(ensure_ascii=False) for t in self.tool_calls or []])
         if len(texts) == 0:
             return ""
         elif len(texts) == 1:

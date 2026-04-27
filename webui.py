@@ -23,6 +23,9 @@ logger = create_logger(
 
 ROLE_EMOJI = {
     Role.SYSTEM: "⚙️",
+    Role.USER: "👤",
+    Role.ASSISTANT: "🤖",
+    Role.TOOL: "🔧",
 }
 
 CONVERT_MAPPING = {
@@ -215,7 +218,7 @@ class ChatDemo:
 
             def format_chat_message(msg: ChatMessage) -> list[dict[str, Any]]:
                 parts: list[dict[str, Any]] = []
-                role_msg = f"{ROLE_EMOJI[msg.role]} **{str(msg.role).title()} Message**"
+                role_msg = f"{ROLE_EMOJI.get(msg.role, '💬')} **{str(msg.role).title()} Message**"
 
                 if msg.reasoning and msg.reasoning.strip():
                     parts.append(

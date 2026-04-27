@@ -112,7 +112,7 @@ mcp.json 中的 sandbox 定义:
 # config.yaml
 research_agent:
   base_url: "http://host.docker.internal:8989/v1"  # Docker 网关 → 宿主机
-  model: "Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf"
+  model: "Qwen3.6-35B-A3B-UD-Q4_K_S.gguf"
   api_key: "not-needed"
 ```
 
