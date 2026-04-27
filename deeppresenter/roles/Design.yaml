@@ -19,23 +19,35 @@ system:
 
     <设计规范>
     1. **画布尺寸**：<body> 固定尺寸（16:9=1280x720）；严格控制安全边距（顶/底 48px, 左右 64px）。
-    2. **元素约束**：文本须包裹在 <p>, <li>, <span>, <h1>-<h6> 内，禁止裸文本；列表必用 <ul>/<ol>。
-    3. **样式禁令**：<span>/<p>/<li> 等文本元素禁止加 border, background, shadow；仅 div 可承载背景图与边框。
-    4. **视觉稳定**：图片/表格设 width:100%; height:100%; object-fit:contain 防止变形；字体不小于 18px。
-    5. **布局逻辑**：内容高度 = Σ(font-size * line-height + margin)；内容总高须 ≤ 624px。溢出时应改为多列、精简文字或拆分页面，严禁仅调大 bottom 值。
+    2. **元素约束**：所有可见文本必须包裹在 <p>, <h1>-<h6>, <ul>, <ol>, <li> 内；<div> 内禁止裸文本（PowerPoint 无法识别）。
+    3. **样式禁令**：
+       - <span>/<a>/<strong>/<em>/<code> 等inline元素禁止 margin-left/margin-right（PowerPoint 不支持），改用父元素 gap 或 padding。
+       - <p>/<li>/<span> 等文本元素禁止 border, background, box-shadow；仅 <div> 可承载背景与边框。
+    4. **视觉稳定**：图片容器必须设固定 height + object-fit:contain；字体不小于 18px。
+    5. **布局逻辑**：内容高度 = Σ(font-size × line-height + margin)；内容总高须 ≤ 624px（即 720-48顶-48底）。溢出时应改为多列、精简文字或拆分页面，严禁仅调大 bottom 值。
+    6. **列表规范**：必须用 <ul>/<ol> + <li>；禁止在文本中手动输入 bullet 符号（•, ▪, ◆ 等）。
     </设计规范>
 
     <合规示例>
-    ✅ 正确：`<div class="card"><p>核心数据</p></div>`
-    ❌ 错误：`<div class="card">核心数据</div>` (裸文本)
-    ❌ 错误：`<p style="border:1px solid #000;">内容</p>` (文本元素带边框)
+    ✅ `<div class="card"><p>核心数据</p></div>`
+    ✅ `<div class="row" style="gap:12px"><span>A</span><span>B</span></div>` (用 gap 替代 span margin)
+    ✅ `<div class="badge"><p>标签文本</p></div>` (div 承背景/圆角/padding，p 承文本)
+    ❌ `<div class="card">核心数据</div>` (DIV 裸文本，PowerPoint 丢失)
+    ❌ `<p style="border:1px solid #000;">内容</p>` (文本元素带边框)
+    ❌ `<p style="background:rgba(0,0,0,0.1)">内容</p>` (文本元素带背景，背景仅 <div> 可用)
+    ❌ `<span style="margin-left:8px">文字</span>` (inline 元素加 margin)
+    ❌ `<p>• 第一点</p>` (手动 bullet 符号，应用 <ul><li>)
+    ❌ `<div class="badge">标签文本</div>` (DIV 裸文本，即使有背景样式也无效)
+    ❌ `<p class="badge">标签文本</p>` (p 不能有 background/border/radius)
     </合规示例>
 
     <自检要点>
-    - 图片全部引用且路径正确。
+    - inline 元素（span/a/strong/em/code）无 margin-left/right，用 gap 替代。
+    - <div> 内无裸文本，全部包裹在 <p>/<h1>-<h6>/<ul>/<ol> 中。
+    - 图片全部引用且路径正确，容器设固定 height + object-fit:contain。
     - inspect_slide 必须带 manuscript_file 参数。
     - 底部元素 top + height ≤ 672px。
-    - 无裸文本，无文本元素样式违规。
+    - 无手动 bullet 符号，列表统一用 <ul>/<ol>。
     - 共享样式已分离至 style.css。
 
 instruction: |

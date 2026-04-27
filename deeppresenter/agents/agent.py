@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import uuid
 from abc import abstractmethod
 from collections.abc import AsyncGenerator
@@ -422,6 +423,144 @@ class Agent:
             *observations,
         ]
         self.chat_history = head + tail + new_tail
+
+        # Strip reasoning from older messages to reduce context size.
+        # After compaction, only the most recent reasoning is useful.
+        for msg in self.chat_history[: -len(new_tail)]:
+            if msg.reasoning is not None:
+                msg.reasoning = None
+
+    def _compact_completed_slides(self) -> None:
+        """Compress chat history for slides that passed validation.
+
+        After a slide passes inspect_slide, its full HTML content in
+        write_file/edit_file arguments is no longer needed in context.
+        Replace with compact placeholders to reduce token consumption.
+        """
+        completed_slides: set[str] = set()
+        for msg in self.chat_history:
+            if msg.role == Role.TOOL:
+                for block in msg.content:
+                    if block.get("type") == "text":
+                        match = re.search(
+                            r"Validation PASSED for ([\w-]+\.html)", block["text"]
+                        )
+                        if match:
+                            completed_slides.add(match.group(1))
+
+        if not completed_slides:
+            return
+
+        compressed_ids: set[str] = set()
+
+        for msg in self.chat_history:
+            if msg.role != Role.ASSISTANT or not msg.tool_calls:
+                continue
+
+            for tc in msg.tool_calls:
+                try:
+                    args = json.loads(tc.function.arguments)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+
+                if tc.function.name == "write_file":
+                    path = args.get("path", "")
+                    if Path(path).name in completed_slides:
+                        args["content"] = f"[saved to {Path(path).name}]"
+                        tc.function.arguments = json.dumps(args, ensure_ascii=False)
+                        compressed_ids.add(tc.id)
+
+                elif tc.function.name == "edit_file":
+                    path = args.get("file_path", "")
+                    if Path(path).name in completed_slides:
+                        args["old_string"] = "[edited]"
+                        args["new_string"] = "[edited]"
+                        tc.function.arguments = json.dumps(args, ensure_ascii=False)
+                        compressed_ids.add(tc.id)
+
+                elif tc.function.name == "execute_command":
+                    cmd = str(args.get("command", ""))
+                    for slide in completed_slides:
+                        if slide in cmd:
+                            args["command"] = f"[wrote {slide}]"
+                            tc.function.arguments = json.dumps(
+                                args, ensure_ascii=False
+                            )
+                            compressed_ids.add(tc.id)
+                            break
+
+        # Compress verbose tool result messages for completed slides
+        for msg in self.chat_history:
+            if msg.role == Role.TOOL and msg.tool_call_id in compressed_ids:
+                if len(msg.text) > 200:
+                    msg.content = [
+                        {
+                            "type": "text",
+                            "text": "[tool result compressed, file saved on disk]",
+                        }
+                    ]
+
+        # Compress inspect_slide PASSED results for completed slides
+        # The full validation message is verbose; a short tag suffices.
+        for msg in self.chat_history:
+            if msg.role != Role.TOOL:
+                continue
+            for block in msg.content:
+                if block.get("type") != "text":
+                    continue
+                block_text = block.get("text", "")
+                if "Validation PASSED for " in block_text and len(block_text) > 100:
+                    match = re.search(
+                        r"Validation PASSED for ([\w-]+\.html)", block_text
+                    )
+                    if match:
+                        block["text"] = f"Validation PASSED for {match.group(1)}"
+
+        # Strip reasoning from completed slide messages to reduce context
+        for msg in self.chat_history:
+            if msg.role == Role.ASSISTANT and msg.reasoning is not None:
+                # Check if this message only involves completed slides
+                if msg.tool_calls:
+                    all_completed = True
+                    for tc in msg.tool_calls:
+                        try:
+                            args = json.loads(tc.function.arguments)
+                        except (json.JSONDecodeError, TypeError):
+                            all_completed = False
+                            break
+                        path = args.get("path", args.get("file_path", ""))
+                        if Path(path).name not in completed_slides:
+                            all_completed = False
+                            break
+                    if all_completed:
+                        msg.reasoning = None
+
+        # Compress shared design files (style.css, design_plan.md) once slides
+        # are passing validation - these files are stable and on disk.
+        _shared_design_files = {"style.css", "design_plan.md"}
+        if completed_slides:
+            for msg in self.chat_history:
+                if msg.role != Role.ASSISTANT or not msg.tool_calls:
+                    continue
+                for tc in msg.tool_calls:
+                    if tc.function.name != "write_file":
+                        continue
+                    try:
+                        args = json.loads(tc.function.arguments)
+                    except (json.JSONDecodeError, TypeError):
+                        continue
+                    path = args.get("path", "")
+                    if Path(path).name in _shared_design_files:
+                        args["content"] = f"[saved to {Path(path).name}]"
+                        tc.function.arguments = json.dumps(args, ensure_ascii=False)
+                        if tc.id not in compressed_ids and len(msg.text) > 200:
+                            compressed_ids.add(tc.id)
+
+        if compressed_ids:
+            debug(
+                f"{self.name} compacted slides {completed_slides}, "
+                f"compressed {len(compressed_ids)} tool calls"
+            )
 
     def _split_history(self, keep_head, keep_tail):
         # ensure the left context window contains the paired tool call and tool call result

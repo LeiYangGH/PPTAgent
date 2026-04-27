@@ -162,7 +162,7 @@ async def inspect_slide(
 @mcp.tool()
 def inspect_manuscript(md_file: str) -> dict:
     """
-    Inspect the markdown manuscript for general statistics and image asset validation.
+    Inspect the markdown manuscript for general statistics, content density, and image asset validation.
     Args:
         md_file (str): The path to the markdown file
     """
@@ -182,6 +182,56 @@ def inspect_manuscript(md_file: str) -> dict:
     else:
         result["language"] = "unknown"
 
+    # ── Per-page content density checks ────────────────────────────
+    MAX_CHARS_PER_PAGE = 120
+    MAX_BULLETS_PER_PAGE = 6
+    for i, page in enumerate(pages, 1):
+        # Strip image references and headings for body-text measurement
+        body_lines: list[str] = []
+        bullet_count = 0
+        for line in page.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if stripped.startswith("!") and "](" in stripped:
+                continue
+            if stripped.startswith("#"):
+                continue
+            if stripped.startswith("- ") or stripped.startswith("* ") or re.match(r"\d+\.\s", stripped):
+                bullet_count += 1
+            body_lines.append(stripped)
+        body_text = " ".join(body_lines)
+        char_count = len(body_text)
+
+        if char_count > MAX_CHARS_PER_PAGE:
+            result["warnings"].append(
+                f"Page {i}: body text is {char_count} chars (max {MAX_CHARS_PER_PAGE}). "
+                "Reduce to short bullet points."
+            )
+        if bullet_count > MAX_BULLETS_PER_PAGE:
+            result["warnings"].append(
+                f"Page {i}: {bullet_count} bullet points (max {MAX_BULLETS_PER_PAGE}). "
+                "Merge or remove points."
+            )
+        # Detect prose paragraphs (3+ consecutive non-bullet, non-heading lines)
+        consecutive_prose = 0
+        for line in page.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or stripped.startswith("!"):
+                consecutive_prose = 0
+                continue
+            if stripped.startswith("- ") or stripped.startswith("* ") or re.match(r"\d+\.\s", stripped):
+                consecutive_prose = 0
+                continue
+            consecutive_prose += 1
+            if consecutive_prose >= 3:
+                result["warnings"].append(
+                    f"Page {i}: contains prose paragraphs (3+ consecutive non-bullet lines). "
+                    "Convert to concise bullet points."
+                )
+                break
+
+    # ── Image asset validation ──────────────────────────────────────
     seen_images = set()
     for match in re.finditer(r"!\[(.*?)\]\((.*?)\)", markdown):
         label, path = match.group(1), match.group(2)

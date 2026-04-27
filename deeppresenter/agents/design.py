@@ -19,6 +19,9 @@ class Design(Agent):
             if isinstance(outcome, list):
                 for item in outcome:
                     yield item
+                # Proactively compress completed slides to reduce context
+                if any("Validation PASSED" in obs.text for obs in outcome):
+                    self._compact_completed_slides()
             else:
                 break
 
