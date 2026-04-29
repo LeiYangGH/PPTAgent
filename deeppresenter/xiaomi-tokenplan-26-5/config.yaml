@@ -1,0 +1,34 @@
+# DeepPresenter configuration
+# DeepPresenter configuration
+offline_mode: false
+context_folding: true
+
+research_agent:
+  base_url: "https://token-plan-cn.xiaomimimo.com/v1"
+  model: "xiaomi/mimo-v2-pro"
+  api_key: "tp-token"
+
+design_agent:
+  base_url: "https://token-plan-cn.xiaomimimo.com/v1"
+  model: "xiaomi/mimo-v2-pro"
+  api_key: "tp-token"
+
+long_context_model:
+  base_url: "https://token-plan-cn.xiaomimimo.com/v1"
+  model: "xiaomi/mimo-v2-pro"
+  api_key: "tp-token"
+
+# # this is not neccessarily required,
+
+vision_model:
+  base_url: "https://token-plan-cn.xiaomimimo.com/v1"
+  model: "xiaomi/mimo-v2-omni"
+  api_key: "tp-token"
+
+# t2i_model:
+#   base_url: "https://ark.cn-beijing.volces.com/api/v3"
+#   model: "doubao-seedream-4.5-251128"
+#   api_key: "your_key"
+#   # sampling_parameters:
+#   #   response_format: "b64_json"
+#   #   extra_body: { "watermark": False }

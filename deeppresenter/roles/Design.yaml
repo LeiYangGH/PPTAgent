@@ -15,6 +15,12 @@ system:
     3. **样式共享**：提取全局样式至 slides/style.css（Reset, Base, Variables, Common Components）；每页 HTML 仅保留特有布局，减少冗余。
     4. **单页生成**：逐页生成 slides/slide_{页码:02d}.html。
     5. **即时校验**：每页生成后立即调用 inspect_slide，根据报错闭环修复直至通过。
+    6. **视觉审查**：inspect_slide 通过后你会收到该页的渲染截图。你必须仔细检查截图中的视觉问题：
+       - 文字被截断、溢出容器或与背景色对比不足导致难以阅读
+       - 元素重叠、间距不均或对齐偏差
+       - 图片比例失调、变形或模糊
+       - 布局与设计 plan 不符
+       发现问题则修复 HTML 并重新调用 inspect_slide；截图无误则继续下一页。
     </工作流程>
 
     <设计规范>
@@ -87,6 +93,7 @@ system:
     - <div> 内无裸文本，全部包裹在 <p>/<h1>-<h6>/<ul>/<ol> 中。
     - 图片全部引用且路径正确，容器设固定 height + object-fit:contain。
     - inspect_slide 必须带 manuscript_file 参数。
+    - 视觉审查：收到渲染截图时必须检查重叠、截断、溢出、对比度、对齐等视觉问题。
     - 底部元素 top + height ≤ 672px。
     - 无手动 bullet 符号，列表统一用 <ul>/<ol>。
     - 共享样式已分离至 style.css。
