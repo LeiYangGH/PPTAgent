@@ -170,16 +170,14 @@ class AgentLoop:
                 self.designagent.save_history()
                 self.save_results()
 
-                # If Design was interrupted by max_turns, try to salvage existing slides
-                if design_interrupted:
-                    # Look for slides in the most likely workspace subdirectories
-                    slide_html_dir = self.intermediate_output.get("slide_html_dir")
-                    if slide_html_dir is None:
-                        # Search for any slides/ directory with HTML files
-                        for candidate in sorted(self.workspace.rglob("slides")):
-                            if candidate.is_dir() and list(candidate.glob("slide_*.html")):
-                                slide_html_dir = candidate
-                                break
+                # Only attempt conversion if we have a valid slide directory
+                slide_html_dir = self.intermediate_output.get("slide_html_dir")
+                if slide_html_dir is None and design_interrupted:
+                    # Search for any slides/ directory with HTML files
+                    for candidate in sorted(self.workspace.rglob("slides")):
+                        if candidate.is_dir() and list(candidate.glob("slide_*.html")):
+                            slide_html_dir = candidate
+                            break
                     if slide_html_dir is None or not list(slide_html_dir.glob("slide_*.html")):
                         yield ChatMessage(
                             role=Role.SYSTEM,
@@ -192,6 +190,11 @@ class AgentLoop:
                         role=Role.SYSTEM,
                         content=f"Design agent reached max turns. Converting {len(list(slide_html_dir.glob('slide_*.html')))} already-generated slides to PPTX.",
                     )
+
+                if slide_html_dir is None:
+                    # No slides produced and not in salvage mode; the exception
+                    # will propagate after finally completes.
+                    return
 
                 pptx_path = self.workspace / f"{md_file.stem}.pptx"
                 try:

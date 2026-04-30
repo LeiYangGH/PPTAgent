@@ -313,9 +313,19 @@ class Agent:
         observations.extend(await asyncio.gather(*coros))
         for obs in observations:
             if obs.has_image:
-                if "gemini" in self.model.lower() or "qwen" in self.model.lower():
+                # Most OpenAI-compatible multimodal APIs (mimo, qwen, gemini, etc.)
+                # require the image to be in a USER message and accompanied by text.
+                if "claude" not in self.model.lower():
                     obs.role = Role.USER
-                if "claude" in self.model.lower():
+                    # Ensure a text block accompanies the image so the API
+                    # does not reject the request with "text is not set".
+                    has_text = any(b.get("type") == "text" for b in obs.content)
+                    if not has_text:
+                        obs.content.insert(0, {
+                            "type": "text",
+                            "text": "Here is the rendered slide screenshot for visual review.",
+                        })
+                else:
                     oai_b64 = obs.content[0]["image_url"]["url"]
                     obs.content = [
                         {
