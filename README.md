@@ -36,6 +36,8 @@ deeppresenter/Qwen3.6-35B-A3B.config/config.yaml
 
 **注意**：配置中使用 `host.docker.internal` 访问宿主机服务，需要先在 Docker Desktop 中启用 host networking。
 
+如需启用在线搜索功能，请前往 [Tavily](https://app.tavily.com/home) 注册并获取 API Key，填入 `.env` 文件的 `TAVILY_API_KEY` 配置项。
+
 #### 启动服务
 
 ```bash
@@ -52,3 +54,4 @@ docker logs deeppresenter-host -f
 
 - `deeppresenter-host:latest` - 主服务镜像
 - `deeppresenter-sandbox:latest` - 沙箱环境镜像
+

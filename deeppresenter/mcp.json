@@ -1,0 +1,65 @@
+[
+    {
+        "name": "any2markdown",
+        "description": "File conversion tools",
+        "command": "python3",
+        "args": [
+            "$PACKAGE_DIR/tools/any2markdown.py"
+        ],
+        "env": {
+            "MINERU_API_KEY": "your_mineru_api_key_here"
+        }
+    },
+    {
+        "name": "tool_agents",
+        "description": "LLM-powered tool agents",
+        "command": "python3",
+        "args": [
+            "$PACKAGE_DIR/tools/tool_agents.py"
+        ],
+        "exclude_tools": [
+            "image_generation",
+            "image_caption"
+        ]
+    },
+    {
+        "name": "research",
+        "description": "Academic paper search tools",
+        "command": "python3",
+        "args": [
+            "$PACKAGE_DIR/tools/research.py"
+        ],
+        "network": true
+    },
+    {
+        "name": "search",
+        "description": "Web search tools (Tavily recommended for China, SerpAPI alternative)",
+        "command": "python3",
+        "args": [
+            "$PACKAGE_DIR/tools/search.py"
+        ],
+        "env": {
+            "TAVILY_API_KEY": "$TAVILY_API_KEY",
+            "SERPAPI_KEY": ""
+        },
+        "network": true
+    },
+    {
+        "name": "sandbox",
+        "description": "An agent sandbox developed on https://github.com/wonderwhy-er/DesktopCommanderMCP",
+        "command": "docker",
+        "args": [
+            "run",
+            "--init",
+            "--name",
+            "$WORKSPACE_ID",
+            "-i",
+            "--rm",
+            "--volumes-from",
+            "deeppresenter-host",
+            "-w",
+            "$WORKSPACE",
+            "deeppresenter-sandbox"
+        ]
+    }
+]
