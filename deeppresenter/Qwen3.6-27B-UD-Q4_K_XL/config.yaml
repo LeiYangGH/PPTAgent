@@ -11,7 +11,7 @@ research_agent:
 design_agent:
   base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
   model: "qwen3-max"
-  api_key: "sk-c6a85987c3324d428672e33eeea180da"
+  api_key: "sk-"
 
 long_context_model:
   base_url: "http://host.docker.internal:8989/v1"
