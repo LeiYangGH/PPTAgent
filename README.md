@@ -16,6 +16,11 @@
 
 预构建的 Docker 镜像已打包，可直接下载使用。
 
+```
+通过网盘分享的文件：
+链接: https://pan.baidu.com/s/11LiFiJZ3aXx9Y7svv_7z7A?pwd=sq6y 提取码: sq6y 复制这段内容后打开百度网盘手机App，操作更方便哦
+```
+
 #### 加载镜像
 
 ```bash
